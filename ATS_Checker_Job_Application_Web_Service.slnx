@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ATS_Checker_Job_Application_Web_Service/ATS_Checker_Job_Application_Web_Service.csproj" />
+  <Project Path="JobApplication.Application/JobApplication.Application.csproj" Id="50eb9858-f298-48c7-8107-c155ded5123a" />
+  <Project Path="JobApplication.Domain/JobApplication.Domain.csproj" Id="49a6ccf9-5613-493e-ad4b-af362506dbdd" />
+  <Project Path="JobApplication.Infrastructure/JobApplication.Infrastructure.csproj" Id="8a2701e1-17a9-4f9f-a56e-113423011e4c" />
+</Solution>

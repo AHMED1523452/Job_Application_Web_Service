@@ -1,0 +1,6 @@
+@ATS_Checker_Job_Application_Web_Service_HostAddress = http://localhost:5175
+
+GET {{ATS_Checker_Job_Application_Web_Service_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
