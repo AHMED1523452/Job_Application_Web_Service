@@ -20,10 +20,17 @@ namespace JobApplication.Infrastructure.Services
             return Guid.Parse(UserId!);
         }
 
+        public Guid? GetCurrentUserIdOrNull()
+        {
+            var value = _httpContextAccessor.HttpContext?.User.FindFirstValue(nameof(ClaimTypes.NameIdentifier));
+            return Guid.TryParse(value, out var userId) ? userId : null;
+        }
+
         public string UserIP()
         {
-            var Ip = _httpContextAccessor.HttpContext.Connection.LocalIpAddress;
-            return Ip!.ToString();
+            return _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
         }
+
+        public string? UserAgent() => _httpContextAccessor.HttpContext?.Request.Headers.UserAgent.ToString();
     }
 }

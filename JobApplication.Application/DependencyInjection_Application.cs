@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using AutoMapper;
+using JobApplication.Application.Behaviors;
 
 namespace JobApplication.Application
 {
@@ -13,10 +15,17 @@ namespace JobApplication.Application
             var assembly = typeof(DependencyInjection_Application).Assembly;
 
             // MediatR — auto-discovers all IRequestHandler implementations
-            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
+            services.AddMediatR(cfg =>
+            {
+                cfg.RegisterServicesFromAssembly(assembly);
+                cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+            });
 
             // FluentValidation — auto-discovers all AbstractValidator<T> implementations
             services.AddValidatorsFromAssembly(assembly);
+
+            // AutoMapper — register profiles from this assembly
+            services.AddAutoMapper(assembly);
 
             return services;
         }

@@ -11,7 +11,7 @@ namespace JobApplication.Infrastructure.Persistence
     {
         void IEntityTypeConfiguration<JobApplications>.Configure(EntityTypeBuilder<JobApplications> builder)
         {
-            builder.Property(x => x.status)
+            builder.Property(x => x.Status)
               .HasConversion<string>();
         }
     }

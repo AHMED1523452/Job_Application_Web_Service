@@ -1,5 +1,4 @@
 ﻿using JobApplication.Application.Interfaces;
-using JobApplication.Domain.Entities;
 using JobApplication.Infrastructure.Persistence;
 using JobApplication.Infrastructure.Security;
 using JobApplication.Infrastructure.Services;
@@ -7,9 +6,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using NetTopologySuite.Geometries;
 using JobApplication.Infrastructure.Settings;
-using Microsoft.Extensions.Options;
-
+using JobApplication.Infrastructure.Identity;
+using Hangfire;
+using System.Net;
+using System.Net.Mail;
 namespace JobApplication.Infrastructure
 {
     public static class DependencyInjection_Infrastructure
@@ -18,10 +20,15 @@ namespace JobApplication.Infrastructure
         this IServiceCollection services,
         IConfiguration configuration)
         {
-
+            //. had been added for the location point property 
             services.AddDbContext<AppDbContext>(options =>
-                            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"))
+                            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"), sql => sql.UseNetTopologySuite())
                             );
+
+            services.AddHangfire(register =>
+                            register.UseSqlServerStorage(configuration.GetConnectionString("HangfireConnection")));
+
+            services.AddHangfireServer();
 
             //. the settings for the LockOut 
             services.Configure<IdentityOptions>(options =>
@@ -45,19 +52,65 @@ namespace JobApplication.Infrastructure
                 options.User.RequireUniqueEmail = true; ///. Unique email   
             }).AddRoles<IdentityRole<Guid>>().AddEntityFrameworkStores<AppDbContext>();
 
+            // Register NetTopologySuite geometry factory for spatial types if needed
+            services.AddSingleton<GeometryFactory>(sp => NetTopologySuite.NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326));
+
             // Bind RoleSeed settings and register for later use (if needed elsewhere)
             services.Configure<RoleSeedSettings>(configuration.GetSection("RoleSeed"));
 
-
-            services.AddScoped(typeof
-                (GenericRepository<>), typeof(IGenericRepository<>));
+            // Register generic repository: interface -> implementation
+            services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped<IIdentityService, IdentityService>();
+            services.AddScoped<IBackgroundJobService, BackgroundJobService>();
+            services.AddScoped<IJobDeadlineService, JobDeadlineService>();
+            services.AddScoped<IEmailNotificationQueue, EmailNotificationQueue>();
+            services.AddScoped<EmailNotificationDeliveryJob>();
+            services.AddScoped<IEmailNotificationDeliveryJob>(provider =>
+                provider.GetRequiredService<EmailNotificationDeliveryJob>());
+
+            // Configure FluentEmail to deliver messages through the configured SMTP server.
+            var smtp = configuration.GetSection("SMTP");
+            var smtpHost = smtp["Host"];
+            var smtpPort = int.TryParse(smtp["Port"], out var configuredPort) ? configuredPort : 587;
+            var smtpUser = smtp["User"];
+            var smtpPassword = smtp["Password"]?.Trim();
+            if (string.Equals(smtpHost, "smtp.gmail.com", StringComparison.OrdinalIgnoreCase)
+                && smtpPassword is not null)
+            {
+                // Google displays app passwords in groups for readability; SMTP expects the code without separators.
+                smtpPassword = string.Concat(smtpPassword.Where(character => !char.IsWhiteSpace(character)));
+            }
+            var fromAddress = smtp["From"] ?? smtpUser;
+            var fromName = smtp["FromName"];
+
+            if (string.IsNullOrWhiteSpace(smtpHost) || string.IsNullOrWhiteSpace(fromAddress))
+                throw new InvalidOperationException("SMTP:Host and SMTP:From (or SMTP:User) must be configured.");
+            if (string.IsNullOrWhiteSpace(smtpUser) || string.IsNullOrWhiteSpace(smtpPassword))
+                throw new InvalidOperationException(
+                    "SMTP authentication is required. Configure SMTP:User and SMTP:Password (for example, the SMTP__Password environment variable). ");
+
+            services
+                .AddFluentEmail(fromAddress, fromName)
+                .AddSmtpSender(() => new SmtpClient(smtpHost, smtpPort)
+                {
+                    UseDefaultCredentials = false,
+                    EnableSsl = true,
+                    Credentials = new NetworkCredential(smtpUser, smtpPassword)
+                });
+
+            services.AddScoped<IEmailService, SmtpEmailService>();
+            // Use custom token hasher (BCrypt) for OTPs and refresh tokens
+            services.AddTransient<IPasswordHasher, PasswordHasher>();
+
+
 
             //. Configuration for JWT Settings 
             services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
             services.AddScoped<IGenerateJwtToken, GenerateJwtToken>();
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<AdminAccountBootstrapper>();
 
             return services;
         }

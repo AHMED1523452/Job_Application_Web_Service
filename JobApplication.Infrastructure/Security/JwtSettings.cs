@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace JobApplication.Infrastructure.Security
+﻿namespace JobApplication.Infrastructure.Security
 {
     public class JwtSettings
     {

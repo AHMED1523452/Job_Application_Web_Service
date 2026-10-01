@@ -1,0 +1,58 @@
+using AutoMapper;
+using JobApplication.Application.Features.Jobs.DTOs;
+using JobApplication.Application.Features.Jobs.Queries;
+using JobApplication.Application.Interfaces;
+using JobApplication.Application.Patterns;
+using JobApplication.Domain.Entities;
+using MediatR;
+
+using JobEntity = JobApplication.Domain.Entities.Jobs;
+namespace JobApplication.Application.Features.Jobs.Handlers;
+
+public sealed class GetMyJobsHandler : IRequestHandler<GetMyJobsQuery, PaginatedResult<JobListItemsResponseDTO>>
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IMapper _mapper;
+    public GetMyJobsHandler(IUnitOfWork unitOfWork, 
+                            ICurrentUserService currentUser, 
+                            IMapper mapper)
+    { 
+        _unitOfWork = unitOfWork; 
+        _currentUser = currentUser;
+        _mapper = mapper; 
+    }
+    public async Task<PaginatedResult<JobListItemsResponseDTO>> Handle(GetMyJobsQuery request, CancellationToken ct)
+    {
+        var userId = _currentUser.GetCurrentUserIdOrNull();
+        if (!userId.HasValue) 
+            return new PaginatedResult<JobListItemsResponseDTO> { IsSuccess = false, Message = "Authentication is required." };
+        var recruiter = await _unitOfWork.Repository<HrProfile>().GetByIdAsync(x => x.UserId == userId.Value, ct);
+
+        if (recruiter is null) 
+            return new PaginatedResult<JobListItemsResponseDTO> { IsSuccess = false, Message = "Recruiter profile not found." };
+
+        var (jobs, total) = await _unitOfWork.Repository<JobEntity>().GetPagedAsync<JobEntity>(
+            request.Page,
+            request.PageSize,
+            x => x.HrProfileId == recruiter.Id && !x.IsDeleted && !x.IsArchived,
+            x => x,
+            nameof(JobEntity.CreatedAt), 
+            true, 
+            null,
+            ct, x => x.HrProfile, x => x.JobCategory, x => x.JobRequirements);
+
+        //. Explicit and Automapper in the same function
+        var items = await JobHandlerHelpers.ToListAsync(_unitOfWork, _mapper, jobs, userId, ct);
+        return new PaginatedResult<JobListItemsResponseDTO> 
+        {
+            Items = items,
+            Pagination = new PaginationMetadata 
+            {
+                Page=request.Page, 
+                PageSize=request.PageSize,
+                TotalCount=total, TotalPages=(int)Math.Ceiling(total/(double)request.PageSize)
+            } 
+        };
+    }
+}

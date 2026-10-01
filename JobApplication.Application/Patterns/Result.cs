@@ -6,7 +6,7 @@ namespace JobApplication.Application.Patterns
 {
     public class Result
     {
-        public static async Task<GenericResult<T>> SuccessAsync<T>(T data, string message = "")
+        public static async Task<GenericResult<T>> SuccessAsync<T>(T? data, string message = "Proccess successfully completed. ")
         {
             return await Task.FromResult(new GenericResult<T>
             {

@@ -1,16 +1,15 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 
-namespace JobApplication.Domain.Entities
+namespace JobApplication.Infrastructure.Identity
 {
     public class ApplicationUser : IdentityUser<Guid>
     {
-        [Required(ErrorMessage = "Full Name is required"),
-            MaxLength(100, ErrorMessage = "Full Name cannot exceed 100 characters")]
-        public string FullName { get; set; }
+        [Required(ErrorMessage = "Full Name field is required. "), MaxLength(100,
+                                        ErrorMessage = "less than 100 characters")]
+        public string FullName { get; set; } = string.Empty;
         public string? Address { get; set; }
         public bool IsActive { get; set; } = true;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow; 
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;//. will be used in updating and soft deleting 
+        public bool IsRevoked { get; set; } = false;
     }
 }

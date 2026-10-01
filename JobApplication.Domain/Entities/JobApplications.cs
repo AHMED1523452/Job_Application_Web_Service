@@ -1,23 +1,33 @@
 ﻿using JobApplication.Domain.Enums;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
 
 namespace JobApplication.Domain.Entities
 {
     public class JobApplications : baseClass
     {
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public Guid Id { get; set; }
-        public string Description { get; set; } = string.Empty;
-        public JobApplicationStatus status { get; set; }
+
         public Guid JobId { get; set; }
+        public Jobs Job { get; set; } = null!;
 
-        [ForeignKey(nameof(JobId))]
-        public Jobs? Job { get; set; }
-        public Guid CandidateId { get; set; }
-        [ForeignKey(nameof(CandidateId))]
-        public Candidate? Candidate { get; set; }
+        public Guid CandidateProfileId { get; set; }
+        public CandidateProfile CandidateProfile { get; set; } = null!;
 
+        public Guid CandidateCvId { get; set; }
+        public CandidateCVs CandidateCv { get; set; } = null!;
+
+        public JobApplicationStatus Status { get; set; }
+
+        public DateTime AppliedAtUtc { get; set; }
+
+        public DateTime? ReviewedAtUtc { get; set; }
+
+        public string? RejectionReason { get; set; }
+        public string? CoverLetter { get; set; }
+
+        public AtsAnalysis? AtsAnalysis { get; set; } //. For relation 1-1
+
+        public ICollection<Chat> Chats { get; set; } = new List<Chat>();
     }
 }

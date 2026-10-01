@@ -1,4 +1,4 @@
-﻿namespace JobApplication.Domain.Entities
+namespace JobApplication.Domain.Entities
 {
     //. you consider that the cancellation will like Patching or updating
     public class baseClass
@@ -11,10 +11,9 @@
         public DateTime? DeletedAt { get; set; } = null;
         public string CreatedBy { get; set; } = "System";
         public string UpdatedBy { get; set; } = "System";
-        public string DeletedBy { get; set; } = null;
+        public string? DeletedBy { get; set; } = null;
         public string? CreatedByIp { get; set; } = null; 
         public string? UpdatedByIp { get; set; } = null; 
         public string? DeletedByIp { get; set; } = null; 
-        
     }
 }

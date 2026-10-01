@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Text;
 
+using JobApplication.Application.Interfaces;
+
 namespace JobApplication.Infrastructure.Persistence
 {
     public class UnitOfWork : IUnitOfWork,IDisposable
@@ -30,6 +32,11 @@ namespace JobApplication.Infrastructure.Persistence
         public Task<int> SaveChangesAsync(CancellationToken ct = default)
         {
             return _context.SaveChangesAsync(ct);
+        }
+
+        public Task<int> CommitAsync(CancellationToken cancellationToken = default)
+        {
+            return SaveChangesAsync(cancellationToken);
         }
 
         public void Dispose()

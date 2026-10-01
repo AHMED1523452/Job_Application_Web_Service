@@ -1,6 +1,8 @@
-﻿using System.Linq.Expressions;
+﻿using JobApplication.Application.Patterns;
+using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore.Query;
 
-namespace JobApplication.Infrastructure.Persistence
+namespace JobApplication.Application.Interfaces
 {
     public interface IGenericRepository<TEntity> where TEntity : class
     {
@@ -15,11 +17,14 @@ namespace JobApplication.Infrastructure.Persistence
                                             CancellationToken cancellationToken = default,
                                             params Expression<Func<TEntity, object?>>[]? includes
                                             );
-        Task<TEntity> GetByIdAsNoTrackingAsync(Expression<Func<TEntity, bool>> predicate,
-                                             CancellationToken cancellationToken = default,
-                                             params Expression<Func<TEntity, object?>>[]? includes);
+        Task<TResult> GetByIdAsNoTrackingAsync<TResult>(Expression<Func<TEntity, bool>> predicate,
+                                                      Expression<Func<TEntity, TResult>>? selector = default, 
+                                                      CancellationToken cancellationToken = default,
+                                                      params Expression<Func<TEntity, object?>>[]? includes);
 
-        Task<TEntity> GetByIdAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken);
+        Task<TEntity> GetByIdAsync(Expression<Func<TEntity, bool>> predicate,
+                                                CancellationToken cancellationToken,
+                                                Expression<Func<TEntity, object?>>[]? includes  = null);
 
          Task<IEnumerable<TResult>> GetAllAsync<TResult>(
                                              Expression<Func<TEntity, bool>>? predicate = null,
@@ -27,7 +32,27 @@ namespace JobApplication.Infrastructure.Persistence
                                              CancellationToken cancellationToken = default,
                                              params Expression<Func<TEntity, object?>>[]? includes) where TResult : class;
 
+        // Paging with search and sorting. selector projects entity to TResult.
+        Task<(IEnumerable<TResult> Items, int TotalCount)> GetPagedAsync<TResult>(
+                                            int page,
+                                            int pageSize,
+                                            Expression<Func<TEntity, bool>>? predicate = null,
+                                            Expression<Func<TEntity, TResult>>? selector = null,
+                                            string? orderBy = null,
+                                            bool orderByDescending = false,
+                                            string? searchTerm = null,
+                                            CancellationToken cancellationToken = default,
+                                            params Expression<Func<TEntity, object?>>[]? includes) where TResult : class;
+
          Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate,
                                           CancellationToken cancellationToken = default);
+
+         Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null,
+                              CancellationToken cancellationToken = default);
+
+        Task<int> ExecuteUpdateAsync(
+            Expression<Func<TEntity, bool>> predicate,
+            Action<UpdateSettersBuilder<TEntity>> setters,
+            CancellationToken cancellationToken = default);
     }
 }
