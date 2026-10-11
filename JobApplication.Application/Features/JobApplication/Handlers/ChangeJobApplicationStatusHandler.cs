@@ -17,17 +17,20 @@ public sealed class ChangeJobApplicationStatusHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IIdentityService _identityService;
     private readonly IEmailNotificationQueue _emailQueue;
+    private readonly IApplicationCache _cache;
 
     public ChangeJobApplicationStatusHandler(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IIdentityService identityService,
-        IEmailNotificationQueue emailQueue)
+        IEmailNotificationQueue emailQueue,
+        IApplicationCache cache)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _identityService = identityService;
         _emailQueue = emailQueue;
+        _cache = cache;
     }
 
     public async Task<GenericResult<CloseJobApplicationResponseDTO>> Handle(
@@ -75,6 +78,7 @@ public sealed class ChangeJobApplicationStatusHandler
         application.UpdatedByIp = _currentUser.UserIP();
         await applications.EditAsync(application, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cache.InvalidateAsync("job-application:", cancellationToken);
 
         var candidate = await _unitOfWork.Repository<CandidateProfile>().GetByIdAsync(
             profile => profile.Id == application.CandidateProfileId,

@@ -13,13 +13,16 @@ public sealed class SaveJobHandler : IRequestHandler<SaveJobCommand, GenericResu
     private readonly IUnitOfWork _uow; 
     private readonly ICurrentUserService _user; 
     private readonly IMapper _mapper;
+    private readonly IApplicationCache _cache;
     public SaveJobHandler(IUnitOfWork uow,
                           ICurrentUserService user, 
-                          IMapper mapper)
+                          IMapper mapper,
+                          IApplicationCache cache)
     {
         _uow=uow;
         _user=user;
         _mapper=mapper;
+        _cache=cache;
     }
     public async Task<GenericResult<JobListItemsResponseDTO>> Handle(SaveJobCommand request,CancellationToken ct)
     {
@@ -48,6 +51,12 @@ public sealed class SaveJobHandler : IRequestHandler<SaveJobCommand, GenericResu
         }
         saved.Notes=request.Request.Notes?.Trim(); if(saved.Id!=Guid.Empty)await _uow.Repository<SavedJobs>().EditAsync(saved,ct);
         await _uow.SaveChangesAsync(ct);
+        // Saving is user-specific. Invalidate that user's cached job lists,
+        // including the recruiter's own list if this account also has that role.
+        await _cache.InvalidateAsync($"job:saved:user:{userId.Value}:", ct);
+        await _cache.InvalidateAsync($"job:all:user:{userId.Value}:", ct);
+        await _cache.InvalidateAsync($"job:mine:user:{userId.Value}:", ct);
+        await _cache.InvalidateAsync($"job:by-id:{job.Id}:", ct);
         var dto=_mapper.Map<JobListItemsResponseDTO>(job);dto.IsSavedByCurrentUser=true;
         return await Result.SuccessAsync(dto,"Job saved.");
     }

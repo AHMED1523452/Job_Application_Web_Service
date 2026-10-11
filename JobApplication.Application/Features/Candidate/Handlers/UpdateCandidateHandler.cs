@@ -13,12 +13,14 @@ public sealed class UpdateCandidateHandler : IRequestHandler<UpdateCandidateComm
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IMapper _mapper;
+    private readonly IApplicationCache _cache;
 
-    public UpdateCandidateHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser, IMapper mapper)
+    public UpdateCandidateHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser, IMapper mapper, IApplicationCache cache)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _mapper = mapper;
+        _cache = cache;
     }
 
     public async Task<GenericResult<CandidateResponseDTO>> Handle(UpdateCandidateCommand command, CancellationToken cancellationToken)
@@ -57,6 +59,8 @@ public sealed class UpdateCandidateHandler : IRequestHandler<UpdateCandidateComm
 
         await repository.EditAsync(candidate, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cache.InvalidateAsync("candidate:", cancellationToken);
+        await _cache.InvalidateAsync("job-application:", cancellationToken);
 
         return await Result.SuccessAsync(
             await CandidateResponseBuilder.BuildAsync(candidate, _unitOfWork, _mapper, cancellationToken),

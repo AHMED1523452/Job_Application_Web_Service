@@ -70,6 +70,18 @@ namespace JobApplication.Application.Mapping
             CreateMap<CandidateEducation, CandidateEducationResponseDTO>();
             CreateMap<CandidateCertification, CandidateCertificationResponseDTO>();
             CreateMap<CandidateCVs, CandidateCvResponseDTO>();
+            CreateMap<UploadCandidateCvRequestDTO, CandidateCVs>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.CandidateProfileId, opt => opt.Ignore())
+                .ForMember(dest => dest.CandidateProfile, opt => opt.Ignore())
+                .ForMember(dest => dest.OriginalFileName, opt => opt.MapFrom(src => Path.GetFileName(src.FileName)))
+                .ForMember(dest => dest.StoragePath, opt => opt.Ignore())
+                .ForMember(dest => dest.ExtractedText, opt => opt.Ignore())
+                .ForMember(dest => dest.ProcessingStatus, opt => opt.Ignore())
+                .ForMember(dest => dest.UploadedAtUtc, opt => opt.Ignore())
+                .ForMember(dest => dest.ProcessedAtUtc, opt => opt.Ignore())
+                .ForMember(dest => dest.FileHash, opt => opt.Ignore())
+                .ForMember(dest => dest.Applications, opt => opt.Ignore());
             CreateMap<CandidatePreference, CandidatePreferenceResponseDTO>();
 
             CreateMap<CandidateSkillResponseDTO, CandidateSkill>()

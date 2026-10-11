@@ -11,15 +11,26 @@ public sealed class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, G
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IApplicationCache _cache;
 
-    public GetCandidatesHandler(IUnitOfWork unitOfWork, IMapper mapper)
+    public GetCandidatesHandler(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUser, IApplicationCache cache)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _currentUser = currentUser;
+        _cache = cache;
     }
 
     public async Task<GenericResult<PaginatedResult<CandidateResponseDTO>>> Handle(GetCandidatesQuery query, CancellationToken cancellationToken)
     {
+        var searchKey = Uri.EscapeDataString(query.Search?.Trim().ToLowerInvariant() ?? string.Empty);
+        var userId = _currentUser.GetCurrentUserIdOrNull()?.ToString() ?? "anonymous";
+
+        var cacheKey = $"candidate:all:user:{userId}:page:{query.Page}:pageSize:{query.PageSize}:search:{searchKey}:sort:{query.OrderBy}:desc:{query.OrderDesc}";
+        var cached = await _cache.GetAsync<GenericResult<PaginatedResult<CandidateResponseDTO>>>(cacheKey, cancellationToken);
+        if (cached is not null) return cached;
+
         System.Linq.Expressions.Expression<Func<Domain.Entities.CandidateProfile, bool>>? predicate = null;
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -60,6 +71,8 @@ public sealed class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, G
             }
         };
 
-        return await Result.SuccessAsync(result, "Candidates retrieved successfully.");
+        var response = await Result.SuccessAsync(result, "Candidates retrieved successfully.");
+        await _cache.CreateAsync(cacheKey, response, cancellationToken);
+        return response;
     }
 }

@@ -12,11 +12,13 @@ public sealed class GetCandidateJobApplicationByIdHandler
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
+    private readonly IApplicationCache _cache;
 
-    public GetCandidateJobApplicationByIdHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser)
+    public GetCandidateJobApplicationByIdHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser, IApplicationCache cache)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     public async Task<GenericResult<JobApplicationResponseDTO>> Handle(
@@ -38,6 +40,10 @@ public sealed class GetCandidateJobApplicationByIdHandler
             return await Result.FailureAsync<JobApplicationResponseDTO>(
                 "The candidate profile in the URL does not belong to the authenticated user.");
 
+        var cacheKey = $"job-application:by-id:{query.ApplicationId}:candidate:{query.CandidateProfileId}:user:{userId.Value}";
+        var cached = await _cache.GetAsync<GenericResult<JobApplicationResponseDTO>>(cacheKey, cancellationToken);
+        if (cached is not null) return cached;
+
         var application = await _unitOfWork.Repository<JobApplications>()
             .GetByIdAsNoTrackingAsync<JobApplicationResponseDTO>(
                 item => item.Id == query.ApplicationId
@@ -55,8 +61,11 @@ public sealed class GetCandidateJobApplicationByIdHandler
                 },
                 cancellationToken);
 
-        return application is null
-            ? await Result.FailureAsync<JobApplicationResponseDTO>("Job application not found.")
-            : await Result.SuccessAsync(application);
+        if (application is null)
+            return await Result.FailureAsync<JobApplicationResponseDTO>("Job application not found.");
+
+        var response = await Result.SuccessAsync(application);
+        await _cache.CreateAsync(cacheKey, response, cancellationToken);
+        return response;
     }
 }

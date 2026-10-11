@@ -21,12 +21,14 @@ namespace JobApplication.Infrastructure.Persistence
         public DbSet<HrProfile> HrProfiles { get; set; }
         public DbSet<JobCategory> JobCategories { get; set; }
         public DbSet<Skill> Skills { get; set; }
+        public DbSet<SkillCategory> SkillCategories { get; set; }
         public DbSet<JobRequirements> JobRequirements { get; set; }
         public DbSet<RequirementMatch> RequirementMatches { get; set; }
         public DbSet<AtsAnalysis> AtsAnalyses { get; set; }
         public DbSet<CandidateCVs> CandidateCVs { get; set; }
         public DbSet<CandidateSkill> CandidateSkills { get; set; }
         public DbSet<ChatParticipant> ChatParticipants { get; set; }
+        public DbSet<IdempotencyRecord> records { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -75,6 +77,31 @@ namespace JobApplication.Infrastructure.Persistence
             }
 
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+            // Seed SkillCategory lookup data
+            try
+            {
+                modelBuilder.Entity<SkillCategory>().HasData(
+                    new SkillCategory { Id = 1, Name = "Programming Languages", Description = "Languages used to write software (e.g., C#, Java, Python)", IsActive = true },
+                    new SkillCategory { Id = 2, Name = "Backend Development", Description = "Server-side development, APIs, and business logic", IsActive = true },
+                    new SkillCategory { Id = 3, Name = "Frontend Development", Description = "Client-side UI/UX and web technologies", IsActive = true },
+                    new SkillCategory { Id = 4, Name = "Database", Description = "Relational and NoSQL databases and data modeling", IsActive = true },
+                    new SkillCategory { Id = 5, Name = "Cloud", Description = "Cloud platforms and services (e.g., Azure, AWS)", IsActive = true },
+                    new SkillCategory { Id = 6, Name = "DevOps", Description = "CI/CD, automation, and infrastructure as code", IsActive = true },
+                    new SkillCategory { Id = 7, Name = "Testing", Description = "Unit, integration, and automated testing practices", IsActive = true },
+                    new SkillCategory { Id = 8, Name = "Security", Description = "Application and infrastructure security practices", IsActive = true },
+                    new SkillCategory { Id = 9, Name = "AI / Machine Learning", Description = "Machine learning, data science and AI-related skills", IsActive = true },
+                    new SkillCategory { Id = 10, Name = "Soft Skills", Description = "Communication, teamwork and other interpersonal skills", IsActive = true }
+                );
+            }
+            catch
+            {
+                // Swallow exceptions during design-time to avoid migration failures
+            }
+
+            modelBuilder.Entity<IdempotencyRecord>()
+                .HasKey(op => op.Key)
+                .HasName("PK_IdempotencyRecord_Key");
 
             modelBuilder.Entity<CandidateProfile>().
                 HasOne<ApplicationUser>()
@@ -145,7 +172,7 @@ namespace JobApplication.Infrastructure.Persistence
                             .HasForeignKey(op => op.CandidateProfileId)
                             .OnDelete(DeleteBehavior.NoAction);
 
-            
+
             modelBuilder.Entity<Jobs>()
                         .HasOne(j => j.JobCategory)
                         .WithMany(c => c.Jobs)
@@ -158,154 +185,161 @@ namespace JobApplication.Infrastructure.Persistence
                 .HasForeignKey(requirement => requirement.SkillId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-    modelBuilder.Entity<CandidateExperience>()
-                        .HasOne(e => e.CandidateProfile)
-                        .WithMany(p => p.experiences)
-                        .HasForeignKey(e => e.CandidateProfileId)
-                        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<CandidateExperience>()
+                                .HasOne(e => e.CandidateProfile)
+                                .WithMany(p => p.experiences)
+                                .HasForeignKey(e => e.CandidateProfileId)
+                                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<CandidateEducation>()
-        .HasOne(e => e.CandidateProfile)
-        .WithMany(p => p.educations)
-        .HasForeignKey(e => e.CandidateProfileId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<CandidateEducation>()
+                .HasOne(e => e.CandidateProfile)
+                .WithMany(p => p.educations)
+                .HasForeignKey(e => e.CandidateProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<CandidateCertification>()
-        .HasOne(c => c.CandidateProfile)
-        .WithMany(p => p.certifications)
-        .HasForeignKey(c => c.CandidateProfileId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<CandidateCertification>()
+                .HasOne(c => c.CandidateProfile)
+                .WithMany(p => p.certifications)
+                .HasForeignKey(c => c.CandidateProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<SavedJobs>()
-        .HasOne(s => s.CandidateProfile)
-        .WithMany(p => p.savedJobs)
-        .HasForeignKey(s => s.CandidateProfileId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<SavedJobs>()
+                .HasOne(s => s.CandidateProfile)
+                .WithMany(p => p.savedJobs)
+                .HasForeignKey(s => s.CandidateProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<SavedJobs>()
-        .HasOne(s => s.Job)
-        .WithMany(j => j.SavedByCandidates)
-        .HasForeignKey(s => s.JobId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<SavedJobs>()
+                .HasOne(s => s.Job)
+                .WithMany(j => j.SavedByCandidates)
+                .HasForeignKey(s => s.JobId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<SavedJobs>()
-        .HasIndex(s => new { s.CandidateProfileId, s.JobId })
-        .IsUnique();
+            modelBuilder.Entity<SavedJobs>()
+                .HasIndex(s => new { s.CandidateProfileId, s.JobId })
+                .IsUnique();
 
-    modelBuilder.Entity<SMSNotification>()
-        .HasOne<ApplicationUser>()
-        .WithMany()
-        .HasForeignKey(s => s.UserId)
-        .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<SMSNotification>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
 
-    modelBuilder.Entity<SearchHistory>()
-        .HasOne<ApplicationUser>()
-        .WithMany()
-        .HasForeignKey(s => s.UserId)
-        .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<SearchHistory>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
 
-    modelBuilder.Entity<MatchingHistory>()
-        .HasOne(m => m.CandidateProfile)
-        .WithMany()
-        .HasForeignKey(m => m.CandidateProfileId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<MatchingHistory>()
+                .HasOne(m => m.CandidateProfile)
+                .WithMany()
+                .HasForeignKey(m => m.CandidateProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<MatchingHistory>()
-        .HasOne(m => m.Job)
-        .WithMany(j => j.MatchingHistories)
-        .HasForeignKey(m => m.JobId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<MatchingHistory>()
+                .HasOne(m => m.Job)
+                .WithMany(j => j.MatchingHistories)
+                .HasForeignKey(m => m.JobId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<JobView>()
-        .HasOne(v => v.Job)
-        .WithMany(j => j.Views)
-        .HasForeignKey(v => v.JobId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<JobView>()
+                .HasOne(v => v.Job)
+                .WithMany(j => j.Views)
+                .HasForeignKey(v => v.JobId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<JobView>()
-        .HasOne<ApplicationUser>()
-        .WithMany()
-        .HasForeignKey(v => v.UserId)
-        .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<JobView>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(v => v.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
 
-    modelBuilder.Entity<CandidateView>()
-        .HasOne(v => v.CandidateProfile)
-        .WithMany()
-        .HasForeignKey(v => v.CandidateProfileId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<CandidateView>()
+                .HasOne(v => v.CandidateProfile)
+                .WithMany()
+                .HasForeignKey(v => v.CandidateProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<CandidateView>()
-        .HasOne(v => v.HrProfile)
-        .WithMany()
-        .HasForeignKey(v => v.HrProfileId)
-        .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<CandidateView>()
+                .HasOne(v => v.HrProfile)
+                .WithMany()
+                .HasForeignKey(v => v.HrProfileId)
+                .OnDelete(DeleteBehavior.SetNull);
 
-    modelBuilder.Entity<Interview>()
-        .HasOne(i => i.JobApplication)
-        .WithMany()
-        .HasForeignKey(i => i.JobApplicationId)
-        .OnDelete(DeleteBehavior.NoAction);
+            modelBuilder.Entity<Interview>()
+                .HasOne(i => i.JobApplication)
+                .WithMany()
+                .HasForeignKey(i => i.JobApplicationId)
+                .OnDelete(DeleteBehavior.NoAction);
 
-    modelBuilder.Entity<Interview>()
-        .HasOne(i => i.InterviewerHrProfile)
-        .WithMany()
-        .HasForeignKey(i => i.InterviewerHrProfileId)
-        .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<Interview>()
+                .HasOne(i => i.InterviewerHrProfile)
+                .WithMany()
+                .HasForeignKey(i => i.InterviewerHrProfileId)
+                .OnDelete(DeleteBehavior.SetNull);
 
-    modelBuilder.Entity<Chat>()
-        .HasOne(c => c.CandidateProfile)
-        .WithMany()
-        .HasForeignKey(c => c.CandidateProfileId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<Chat>()
+                .HasOne(c => c.CandidateProfile)
+                .WithMany()
+                .HasForeignKey(c => c.CandidateProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<Chat>()
-        .HasOne(c => c.HrProfile)
-        .WithMany()
-        .HasForeignKey(c => c.HrProfileId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<Chat>()
+                .HasOne(c => c.HrProfile)
+                .WithMany()
+                .HasForeignKey(c => c.HrProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<Chat>()
-        .HasOne(c => c.JobApplication)
-        .WithMany(application => application.Chats)
-        .HasForeignKey(c => c.JobApplicationId)
-        .OnDelete(DeleteBehavior.NoAction);
+            modelBuilder.Entity<Chat>()
+                .HasOne(c => c.JobApplication)
+                .WithMany(application => application.Chats)
+                .HasForeignKey(c => c.JobApplicationId)
+                .OnDelete(DeleteBehavior.NoAction);
 
-    modelBuilder.Entity<ChatParticipant>()
-        .HasKey(participant => new { participant.ChatId, participant.UserId });
+            modelBuilder.Entity<ChatParticipant>()
+                .HasKey(participant => new { participant.ChatId, participant.UserId });
 
-    modelBuilder.Entity<ChatParticipant>()
-        .HasOne(participant => participant.Chat)
-        .WithMany(chat => chat.Participants)
-        .HasForeignKey(participant => participant.ChatId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<ChatParticipant>()
+                .HasOne(participant => participant.Chat)
+                .WithMany(chat => chat.Participants)
+                .HasForeignKey(participant => participant.ChatId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<ChatParticipant>()
-        .HasOne<ApplicationUser>()
-        .WithMany()
-        .HasForeignKey(participant => participant.UserId)
-        .OnDelete(DeleteBehavior.Cascade);
+            //. 1-N with the ApplicationUser table and the ChatParticipant table
+            //. 1-N with the  chat table and the ChatParticipant table
+            modelBuilder.Entity<ChatParticipant>()
+               .HasOne<ApplicationUser>()
+               .WithMany()
+               .HasForeignKey(participant => participant.UserId)
+               .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<ChatParticipant>()
-        .HasIndex(participant => participant.UserId);
+            modelBuilder.Entity<ChatParticipant>()
+                .HasIndex(participant => participant.UserId);
 
-    modelBuilder.Entity<Message>()
-        .HasOne(m => m.Chat)
-        .WithMany(c => c.Messages)
-        .HasForeignKey(m => m.ChatId)
-        .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.Chat)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(m => m.ChatId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    modelBuilder.Entity<Message>()
-        .HasOne<ApplicationUser>()
-        .WithMany()
-        .HasForeignKey(m => m.SenderId)
-        .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<Message>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.SetNull);
 
-    modelBuilder.Entity<Message>()
-        .HasOne(m => m.MediaFile)
-        .WithMany()
-        .HasForeignKey(m => m.MediaFileId)
-        .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.MediaFile)
+                .WithMany()
+                .HasForeignKey(m => m.MediaFileId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Skill>()
+                .HasOne(op => op.SkillCategory)
+                .WithMany(op => op.Skills)
+                .HasForeignKey(op => op.SkillCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
-
     }
 }

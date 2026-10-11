@@ -21,12 +21,40 @@ public sealed class CandidatesController : ControllerBase
     [ProducesResponseType(typeof(GenericResult<CandidateResponseDTO>), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<GenericResult<CandidateResponseDTO>>> Create(
-        [FromBody] CandidateRequestDTO request,
+        CandidateRequestDTO request,
         CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new CreateCandidateCommand(request), cancellationToken);
-        if (!result.IsSuccess) return Conflict(result);
-        return CreatedAtAction(nameof(GetMine), result);
+
+        if (!result.IsSuccess) return Conflict(result);  //. existing candidate profile for the user, return 409 Conflict
+        return CreatedAtAction(nameof(GetMine), result); //. 201 Created with the created candidate profile (return the result of GetMine action)
+    }
+
+    [Authorize(Roles = "User")]
+    [HttpPost("mine/cvs")]
+    [Consumes("multipart/form-data")] //. IForm form in the request body, which is used to upload files
+    [ProducesResponseType(typeof(GenericResult<CandidateCvResponseDTO>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<GenericResult<CandidateCvResponseDTO>>> UploadMyCv(
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        if (file is null)
+            return BadRequest(await Result.FailureAsync<CandidateCvResponseDTO>("A CV file is required."));
+
+        await using var stream = file.OpenReadStream();
+        //. mapping for UploadCandidateCvRequestDTO to send it to the handler 
+        var request = new UploadCandidateCvRequestDTO
+        {
+            FileStream = stream,
+            FileName = file.FileName,
+            ContentType = file.ContentType,
+            FileSize = file.Length
+        };
+
+        var result = await _mediator.Send(new UploadCandidateCvCommand(request), cancellationToken);
+        if (!result.IsSuccess) return BadRequest(result);
+        return StatusCode(StatusCodes.Status201Created, result);
     }
 
     [Authorize(Roles = "User")]
@@ -59,7 +87,7 @@ public sealed class CandidatesController : ControllerBase
 
     [Authorize(Roles = "User")]
     [HttpDelete("mine")]
-    [ProducesResponseType(typeof(GenericResult<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(GenericResult<Guid>), StatusCodes. Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<GenericResult<Guid>>> ArchiveMine(CancellationToken cancellationToken)
     {

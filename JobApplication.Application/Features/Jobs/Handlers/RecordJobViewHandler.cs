@@ -10,11 +10,14 @@ public sealed class RecordJobViewHandler : IRequestHandler<RecordJobViewCommand,
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _user;
+    private readonly IApplicationCache _cache;
     public RecordJobViewHandler(IUnitOfWork uow,
-                                ICurrentUserService user)
+                                ICurrentUserService user,
+                                IApplicationCache cache)
     {
         _uow=uow;
         _user=user;
+        _cache=cache;
     }
     public async Task<GenericResult<int>> Handle(RecordJobViewCommand request,CancellationToken ct)
     {
@@ -30,6 +33,7 @@ public sealed class RecordJobViewHandler : IRequestHandler<RecordJobViewCommand,
         {
             await _uow.Repository<JobView>().AddAsync(new JobView{Id=Guid.NewGuid(),JobId=job.Id,UserId=userId,ViewedAt=DateTime.UtcNow,IpAddress=_user.UserIP(),UserAgent=_user.UserAgent()},ct);
             await _uow.SaveChangesAsync(ct);
+            await _cache.InvalidateAsync($"job:by-id:{job.Id}:", ct);
         }
         var count=(
             await _uow.Repository<JobView>().GetAllAsync<JobView>(x=>x.JobId==job.Id,cancellationToken:ct)

@@ -111,6 +111,20 @@ namespace ATS_Checker_Job_Application_Web_Service.Controllers
             return Ok(result);
         }
 
+        [Authorize]
+        [HttpPost("change-password")]
+        [ProducesResponseType(typeof(GenericResult<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<GenericResult<string>>> ChangePassword(
+            [FromBody] ChangePasswordRequestDTO request,
+            CancellationToken cancellationToken)
+        {
+            var result = await _mediator.Send(new ChangePasswordCommand(request), cancellationToken);
+            if (!result.IsSuccess) return BadRequest(result);
+            return Ok(result);
+        }
+
         [HttpPost("logout")]
         [ProducesResponseType(typeof(GenericResult<string>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

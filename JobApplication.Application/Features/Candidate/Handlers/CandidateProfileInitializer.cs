@@ -6,6 +6,9 @@ internal static class CandidateProfileInitializer
 {
     /// <summary>
     /// Iteration on each table that made a relation between Candidate 
+    /// setting the Id and CandidateProfileId for each child entity and initializing audit fields
+    /// and this method is called when creating a new CandidateProfile
+    /// and that's why we need to set the Id and CandidateProfileId for each child entity
     /// 
     /// </summary>
     /// <param name="candidate"></param>

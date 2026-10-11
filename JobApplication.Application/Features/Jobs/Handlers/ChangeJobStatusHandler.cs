@@ -14,14 +14,17 @@ public sealed class ChangeJobStatusHandler : IRequestHandler<ChangeJobStatusComm
     private readonly ICurrentUserService _user; 
     private readonly IMapper _mapper; 
     private readonly IBackgroundJobService _backgroundJobs;
+    private readonly IApplicationCache _cache;
     public ChangeJobStatusHandler(IUnitOfWork uow, 
                                   ICurrentUserService user, 
                                   IMapper mapper, 
-                                  IBackgroundJobService backgroundJobs) 
+                                  IBackgroundJobService backgroundJobs,
+                                  IApplicationCache cache) 
     { 
         _uow=uow; _user=user; 
         _mapper=mapper;
         _backgroundJobs=backgroundJobs; 
+        _cache=cache;
     }
     public async Task<GenericResult<JobDetailsResponseDTO>> Handle(ChangeJobStatusCommand request, CancellationToken ct)
     {
@@ -60,6 +63,7 @@ public sealed class ChangeJobStatusHandler : IRequestHandler<ChangeJobStatusComm
 
         await _uow.Repository<JobEntity>().EditAsync(job,ct); 
         await _uow.SaveChangesAsync(ct);
+        await _cache.InvalidateAsync("job:", ct);
 
         //. Using the Background job service to create a schedule 
         if(next == JobStatus.Published && job.ApplicationDeadlineUtc.HasValue)

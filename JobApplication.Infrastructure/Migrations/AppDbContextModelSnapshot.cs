@@ -875,6 +875,34 @@ namespace JobApplication.Infrastructure.Migrations
                     b.ToTable("HrProfiles");
                 });
 
+            modelBuilder.Entity("JobApplication.Domain.Entities.IdempotencyRecord", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ResponseCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Key")
+                        .HasName("PK_IdempotencyRecord_Key");
+
+                    b.ToTable("records");
+                });
+
             modelBuilder.Entity("JobApplication.Domain.Entities.Interview", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1449,6 +1477,15 @@ namespace JobApplication.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
 
@@ -1807,6 +1844,9 @@ namespace JobApplication.Infrastructure.Migrations
                     b.Property<string>("DeletedByIp")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -1824,8 +1864,8 @@ namespace JobApplication.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("SkillCategory")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<long?>("SkillCategoryId")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1839,7 +1879,104 @@ namespace JobApplication.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("SkillCategoryId");
+
                     b.ToTable("Skills");
+                });
+
+            modelBuilder.Entity("JobApplication.Domain.Entities.SkillCategory", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SkillCategories");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            Description = "Languages used to write software (e.g., C#, Java, Python)",
+                            IsActive = true,
+                            Name = "Programming Languages"
+                        },
+                        new
+                        {
+                            Id = 2L,
+                            Description = "Server-side development, APIs, and business logic",
+                            IsActive = true,
+                            Name = "Backend Development"
+                        },
+                        new
+                        {
+                            Id = 3L,
+                            Description = "Client-side UI/UX and web technologies",
+                            IsActive = true,
+                            Name = "Frontend Development"
+                        },
+                        new
+                        {
+                            Id = 4L,
+                            Description = "Relational and NoSQL databases and data modeling",
+                            IsActive = true,
+                            Name = "Database"
+                        },
+                        new
+                        {
+                            Id = 5L,
+                            Description = "Cloud platforms and services (e.g., Azure, AWS)",
+                            IsActive = true,
+                            Name = "Cloud"
+                        },
+                        new
+                        {
+                            Id = 6L,
+                            Description = "CI/CD, automation, and infrastructure as code",
+                            IsActive = true,
+                            Name = "DevOps"
+                        },
+                        new
+                        {
+                            Id = 7L,
+                            Description = "Unit, integration, and automated testing practices",
+                            IsActive = true,
+                            Name = "Testing"
+                        },
+                        new
+                        {
+                            Id = 8L,
+                            Description = "Application and infrastructure security practices",
+                            IsActive = true,
+                            Name = "Security"
+                        },
+                        new
+                        {
+                            Id = 9L,
+                            Description = "Machine learning, data science and AI-related skills",
+                            IsActive = true,
+                            Name = "AI / Machine Learning"
+                        },
+                        new
+                        {
+                            Id = 10L,
+                            Description = "Communication, teamwork and other interpersonal skills",
+                            IsActive = true,
+                            Name = "Soft Skills"
+                        });
                 });
 
             modelBuilder.Entity("JobApplication.Domain.Entities.VerificationCode", b =>
@@ -2274,8 +2411,6 @@ namespace JobApplication.Infrastructure.Migrations
                     b.Navigation("HrProfile");
 
                     b.Navigation("JobApplication");
-
-                    b.Navigation("Participants");
                 });
 
             modelBuilder.Entity("JobApplication.Domain.Entities.ChatParticipant", b =>
@@ -2555,6 +2690,16 @@ namespace JobApplication.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
+            modelBuilder.Entity("JobApplication.Domain.Entities.Skill", b =>
+                {
+                    b.HasOne("JobApplication.Domain.Entities.SkillCategory", "SkillCategory")
+                        .WithMany("Skills")
+                        .HasForeignKey("SkillCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("SkillCategory");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -2641,9 +2786,9 @@ namespace JobApplication.Infrastructure.Migrations
 
             modelBuilder.Entity("JobApplication.Domain.Entities.Chat", b =>
                 {
-                    b.Navigation("Participants");
-
                     b.Navigation("Messages");
+
+                    b.Navigation("Participants");
                 });
 
             modelBuilder.Entity("JobApplication.Domain.Entities.HrProfile", b =>
@@ -2688,6 +2833,11 @@ namespace JobApplication.Infrastructure.Migrations
             modelBuilder.Entity("JobApplication.Domain.Entities.Skill", b =>
                 {
                     b.Navigation("CandidateSkills");
+                });
+
+            modelBuilder.Entity("JobApplication.Domain.Entities.SkillCategory", b =>
+                {
+                    b.Navigation("Skills");
                 });
 #pragma warning restore 612, 618
         }

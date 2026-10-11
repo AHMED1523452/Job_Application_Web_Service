@@ -17,17 +17,20 @@ public sealed class UpdateJobApplicationHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IIdentityService _identityService;
     private readonly IEmailNotificationQueue _emailQueue;
+    private readonly IApplicationCache _cache;
 
     public UpdateJobApplicationHandler(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IIdentityService identityService,
-        IEmailNotificationQueue emailQueue)
+        IEmailNotificationQueue emailQueue,
+        IApplicationCache cache)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _identityService = identityService;
         _emailQueue = emailQueue;
+        _cache = cache;
     }
 
     public async Task<GenericResult<UpdateApplicationResponseDTO>> Handle(
@@ -66,6 +69,7 @@ public sealed class UpdateJobApplicationHandler
         application.UpdatedByIp = _currentUser.UserIP();
         await applications.EditAsync(application, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cache.InvalidateAsync("job-application:", cancellationToken);
 
         var job = await _unitOfWork.Repository<JobEntity>().GetByIdAsync(
             item => item.Id == application.JobId,

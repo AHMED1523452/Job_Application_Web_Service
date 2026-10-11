@@ -15,6 +15,7 @@ namespace JobApplication.Application.Interfaces
         Task<GenericResult<LoginResponseDTO>> RefreshTokenAsync(RefreshTokenRequestDTO request, CancellationToken cancellationToken);
         Task<GenericResult<string>> ForgotPasswordAsync(ForgotPasswordRequestDTO request, CancellationToken cancellationToken);
         Task<GenericResult<string>> ResetPasswordAsync(ResetPasswordRequestDTO request, CancellationToken cancellationToken);
+        Task<GenericResult<string>> ChangePasswordAsync(Guid userId, ChangePasswordRequestDTO request, CancellationToken cancellationToken);
         Task<GenericResult<string>> LogoutAsync(LogoutRequestDTO request, CancellationToken cancellationToken);
         Task<GenericResult<string>> RevokeUserAsync(RevokeUserRequestDTO request, CancellationToken cancellationToken);
         Task<GenericResult<string>> UnRevokeUserAsync(UnRevokeUserRequestDTO request, CancellationToken cancellationToken);

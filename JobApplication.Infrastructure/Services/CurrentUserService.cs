@@ -1,5 +1,6 @@
 ﻿using JobApplication.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
+using System.Reflection.Metadata.Ecma335;
 using System.Security.Claims;
 
 
@@ -16,13 +17,13 @@ namespace JobApplication.Infrastructure.Services
 
         public Guid UserId()
         {
-            var UserId = _httpContextAccessor.HttpContext?.User.FindFirstValue(nameof(ClaimTypes.NameIdentifier));
+            var UserId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
             return Guid.Parse(UserId!);
         }
 
         public Guid? GetCurrentUserIdOrNull()
         {
-            var value = _httpContextAccessor.HttpContext?.User.FindFirstValue(nameof(ClaimTypes.NameIdentifier));
+            var value = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
             return Guid.TryParse(value, out var userId) ? userId : null;
         }
 

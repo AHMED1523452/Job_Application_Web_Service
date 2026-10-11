@@ -50,7 +50,7 @@ public sealed class EmailNotificationQueue : IEmailNotificationQueue
         try
         {
             await _backgroundJobs.Enqueue<EmailNotificationDeliveryJob>(
-                job => job.DeliverAsync(record.Id, CancellationToken.None));
+                job => job.DeliverAsync(record.Id, CancellationToken.None)); //. AS Enqueue in hangfire
         }
         catch (Exception exception)
         {

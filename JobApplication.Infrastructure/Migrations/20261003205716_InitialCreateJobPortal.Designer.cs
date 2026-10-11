@@ -13,8 +13,8 @@ using NetTopologySuite.Geometries;
 namespace JobApplication.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260927085343_updates")]
-    partial class updates
+    [Migration("20261003205716_InitialCreateJobPortal")]
+    partial class InitialCreateJobPortal
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -36,6 +36,7 @@ namespace JobApplication.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("AtsScore")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("CreatedAt")
@@ -61,6 +62,7 @@ namespace JobApplication.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("FinalScore")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsActive")
@@ -82,6 +84,7 @@ namespace JobApplication.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("RequirementsScore")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("TotalRequirementsCount")
@@ -420,6 +423,7 @@ namespace JobApplication.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal?>("MinimumMatchScore")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int?>("MinimumYearsOfExperience")
@@ -571,6 +575,7 @@ namespace JobApplication.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("MatchScore")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Reason")
@@ -715,6 +720,27 @@ namespace JobApplication.Infrastructure.Migrations
                     b.ToTable("Chat");
                 });
 
+            modelBuilder.Entity("JobApplication.Domain.Entities.ChatParticipant", b =>
+                {
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("JoinedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LastReadAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("ChatId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ChatParticipants");
+                });
+
             modelBuilder.Entity("JobApplication.Domain.Entities.EmailNotification", b =>
                 {
                     b.Property<long>("Id")
@@ -733,10 +759,7 @@ namespace JobApplication.Infrastructure.Migrations
                     b.Property<DateTime?>("FailedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("NotificationId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<long?>("NotificationId1")
+                    b.Property<long?>("NotificationId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("RecipientEmail")
@@ -761,7 +784,7 @@ namespace JobApplication.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NotificationId1");
+                    b.HasIndex("NotificationId");
 
                     b.HasIndex("UserId");
 
@@ -853,6 +876,34 @@ namespace JobApplication.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("HrProfiles");
+                });
+
+            modelBuilder.Entity("JobApplication.Domain.Entities.IdempotencyRecord", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ResponseCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Key")
+                        .HasName("PK_IdempotencyRecord_Key");
+
+                    b.ToTable("records");
                 });
 
             modelBuilder.Entity("JobApplication.Domain.Entities.Interview", b =>
@@ -1091,6 +1142,7 @@ namespace JobApplication.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("MatchScore")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Reason")
@@ -1158,6 +1210,9 @@ namespace JobApplication.Infrastructure.Migrations
                     b.Property<int>("RequirementType")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("SkillId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -1169,11 +1224,14 @@ namespace JobApplication.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("Weight")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("JobId");
+
+                    b.HasIndex("SkillId");
 
                     b.ToTable("JobRequirements");
                 });
@@ -1422,6 +1480,15 @@ namespace JobApplication.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
 
@@ -1600,6 +1667,7 @@ namespace JobApplication.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Score")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -2237,7 +2305,7 @@ namespace JobApplication.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("JobApplication.Domain.Entities.JobApplications", "JobApplication")
-                        .WithMany()
+                        .WithMany("Chats")
                         .HasForeignKey("JobApplicationId")
                         .OnDelete(DeleteBehavior.NoAction);
 
@@ -2248,11 +2316,29 @@ namespace JobApplication.Infrastructure.Migrations
                     b.Navigation("JobApplication");
                 });
 
+            modelBuilder.Entity("JobApplication.Domain.Entities.ChatParticipant", b =>
+                {
+                    b.HasOne("JobApplication.Domain.Entities.Chat", "Chat")
+                        .WithMany("Participants")
+                        .HasForeignKey("ChatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("JobApplication.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Chat");
+                });
+
             modelBuilder.Entity("JobApplication.Domain.Entities.EmailNotification", b =>
                 {
                     b.HasOne("JobApplication.Domain.Entities.Notification", "Notification")
                         .WithMany()
-                        .HasForeignKey("NotificationId1");
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("JobApplication.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
@@ -2344,7 +2430,14 @@ namespace JobApplication.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("JobApplication.Domain.Entities.Skill", "Skill")
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.Navigation("Job");
+
+                    b.Navigation("Skill");
                 });
 
             modelBuilder.Entity("JobApplication.Domain.Entities.JobView", b =>
@@ -2587,6 +2680,8 @@ namespace JobApplication.Infrastructure.Migrations
             modelBuilder.Entity("JobApplication.Domain.Entities.Chat", b =>
                 {
                     b.Navigation("Messages");
+
+                    b.Navigation("Participants");
                 });
 
             modelBuilder.Entity("JobApplication.Domain.Entities.HrProfile", b =>
@@ -2597,6 +2692,8 @@ namespace JobApplication.Infrastructure.Migrations
             modelBuilder.Entity("JobApplication.Domain.Entities.JobApplications", b =>
                 {
                     b.Navigation("AtsAnalysis");
+
+                    b.Navigation("Chats");
                 });
 
             modelBuilder.Entity("JobApplication.Domain.Entities.JobCategory", b =>

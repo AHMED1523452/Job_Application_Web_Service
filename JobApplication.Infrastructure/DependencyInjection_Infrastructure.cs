@@ -12,6 +12,8 @@ using JobApplication.Infrastructure.Identity;
 using Hangfire;
 using System.Net;
 using System.Net.Mail;
+using StackExchange.Redis;
+using JobApplication.Infrastructure.Services.Storage;
 namespace JobApplication.Infrastructure
 {
     public static class DependencyInjection_Infrastructure
@@ -29,6 +31,21 @@ namespace JobApplication.Infrastructure
                             register.UseSqlServerStorage(configuration.GetConnectionString("HangfireConnection")));
 
             services.AddHangfireServer();
+
+            var distributedCache = configuration.GetSection("DistributedCache");
+            var redisConnection = distributedCache["ConnectionString"];
+            var redisInstanceName = distributedCache["InstanceName"];
+            var cacheExpirationMinutes = distributedCache.GetValue<int>("DefaultExpirationMinutes");
+            if (string.IsNullOrWhiteSpace(redisConnection)
+                || string.IsNullOrWhiteSpace(redisInstanceName)
+                || cacheExpirationMinutes <= 0)
+                throw new InvalidOperationException("DistributedCache connection, instance name, and positive expiration must be configured.");
+
+            //. Register distributed cache settings and services
+            services.Configure<DistributedCacheSettings>(distributedCache);
+
+            services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnection));
+            services.AddScoped<IApplicationCache, DistributedApplicationCache>();
 
             //. the settings for the LockOut 
             services.Configure<IdentityOptions>(options =>
@@ -50,7 +67,7 @@ namespace JobApplication.Infrastructure
                 options.Password.RequireUppercase = true;
 
                 options.User.RequireUniqueEmail = true; ///. Unique email   
-            }).AddRoles<IdentityRole<Guid>>().AddEntityFrameworkStores<AppDbContext>();
+            }).AddRoles<IdentityRole<Guid>>().AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
 
             // Register NetTopologySuite geometry factory for spatial types if needed
             services.AddSingleton<GeometryFactory>(sp => NetTopologySuite.NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326));
@@ -111,6 +128,15 @@ namespace JobApplication.Infrastructure
             services.AddScoped<IGenerateJwtToken, GenerateJwtToken>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<AdminAccountBootstrapper>();
+
+            //. Register All Services that related with the storage logic 
+
+            services.AddTransient<IValidatorService, ValidatorService>();
+            services.AddScoped<IFileStorageService, SupabaseStorageService>();
+
+            //. Configuration for the Supabase Storage Settings 
+            services.Configure<SupabaseStorageServiceOptions>
+                                (configuration.GetSection("SupabaseStorage"));
 
             return services;
         }

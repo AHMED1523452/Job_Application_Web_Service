@@ -15,19 +15,27 @@ public sealed class GetJobsHandler : IRequestHandler<GetJobsQuery, PaginatedResu
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IMapper _mapper;
+    private readonly IApplicationCache _cache;
     public GetJobsHandler(IUnitOfWork unitOfWork,
                           ICurrentUserService currentUser,
-                          IMapper mapper)
+                          IMapper mapper,
+                          IApplicationCache cache)
     { 
         _unitOfWork = unitOfWork; 
         _currentUser = currentUser;
         _mapper = mapper; 
+        _cache = cache;
     }
 
     public async Task<PaginatedResult<JobListItemsResponseDTO>> Handle(GetJobsQuery request, CancellationToken ct)
     {
         var f = request.Request; var now = DateTime.UtcNow;
         var keyword = string.IsNullOrWhiteSpace(f.Keyword) ? null : f.Keyword.Trim();
+        var userKey = _currentUser.GetCurrentUserIdOrNull()?.ToString() ?? "anonymous";
+        var skillKey = f.SkillIds is null ? string.Empty : string.Join(',', f.SkillIds.OrderBy(id => id));
+        var cacheKey = $"job:all:user:{userKey}:page:{request.Page}:pageSize:{request.PageSize}:keyword:{Uri.EscapeDataString(keyword ?? string.Empty)}:category:{f.JobCategoryId}:employment:{f.EmploymentType}:location:{Uri.EscapeDataString(f.Location?.Trim().ToLowerInvariant() ?? string.Empty)}:skills:{skillKey}:lat:{f.Latitude}:lon:{f.Longitude}:radius:{f.RadiusKm}:sort:{f.SortBy}";
+        var cached = await _cache.GetAsync<PaginatedResult<JobListItemsResponseDTO>>(cacheKey, ct);
+        if (cached is not null) return cached;
         //. Validating if the point is existing or not if not we will create another point 
         var searchPoint = f.Latitude.HasValue && f.Longitude.HasValue
             ? new Point(f.Longitude.Value, f.Latitude.Value) { SRID = 4326 }
@@ -74,7 +82,7 @@ public sealed class GetJobsHandler : IRequestHandler<GetJobsQuery, PaginatedResu
             foreach (var (item, entity) in items.Zip(entities))
                 item.DistanceKm = entity.LocationPoint?.Distance(searchPoint) / 1000.0;
         }
-        return new PaginatedResult<JobListItemsResponseDTO> { 
+        var response = new PaginatedResult<JobListItemsResponseDTO> { 
             Items = items,
             Pagination = new PaginationMetadata 
             {
@@ -84,5 +92,7 @@ public sealed class GetJobsHandler : IRequestHandler<GetJobsQuery, PaginatedResu
                 TotalPages = (int)Math.Ceiling(total / (double)request.PageSize) 
             } 
         };
+        await _cache.CreateAsync(cacheKey, response, ct);
+        return response;
     }
 }

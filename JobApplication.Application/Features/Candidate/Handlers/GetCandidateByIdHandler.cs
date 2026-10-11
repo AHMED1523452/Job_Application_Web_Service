@@ -11,17 +11,23 @@ public sealed class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQu
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly IApplicationCache _cache;
 
-    public GetCandidateByIdHandler(IUnitOfWork unitOfWork, IMapper mapper)
+    public GetCandidateByIdHandler(IUnitOfWork unitOfWork, IMapper mapper, IApplicationCache cache)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _cache = cache;
     }
 
     public async Task<GenericResult<CandidateResponseDTO>> Handle(
         GetCandidateByIdQuery request,
         CancellationToken cancellationToken)
     {
+        var cacheKey = $"candidate:by-id:{request.Id}";
+        var cached = await _cache.GetAsync<GenericResult<CandidateResponseDTO>>(cacheKey, cancellationToken);
+        if (cached is not null) return cached;
+
         var candidateResponse = await _unitOfWork.Repository<Domain.Entities.CandidateProfile>()
             .GetByIdAsNoTrackingAsync(
                 candidate => candidate.Id == request.Id
@@ -41,6 +47,8 @@ public sealed class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQu
             _mapper,
             cancellationToken);
 
-        return await Result.SuccessAsync(response);
+        var result = await Result.SuccessAsync(response);
+        await _cache.CreateAsync(cacheKey, result, cancellationToken);
+        return result;
     }
 }

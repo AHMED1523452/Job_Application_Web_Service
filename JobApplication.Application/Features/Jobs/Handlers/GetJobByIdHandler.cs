@@ -14,15 +14,22 @@ public sealed class GetJobByIdHandler : IRequestHandler<GetJobByIdQuery, Generic
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
+    private readonly IApplicationCache _cache;
 
-    public GetJobByIdHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser)
+    public GetJobByIdHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser, IApplicationCache cache)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     public async Task<GenericResult<JobDetailsResponseDTO>> Handle(GetJobByIdQuery request, CancellationToken ct)
     {
+        var currentUserId = _currentUser.GetCurrentUserIdOrNull();
+        var cacheKey = $"job:by-id:{request.Id}:user:{currentUserId?.ToString() ?? "anonymous"}";
+        var cached = await _cache.GetAsync<GenericResult<JobDetailsResponseDTO>>(cacheKey, ct);
+        if (cached is not null) return cached;
+
         var projection = await _unitOfWork.Repository<JobEntity>().GetByIdAsNoTrackingAsync(
             job => job.Id == request.Id && !job.IsDeleted && !job.IsArchived,
             JobDetailsQueryProjection.Select,
@@ -74,6 +81,8 @@ public sealed class GetJobByIdHandler : IRequestHandler<GetJobByIdQuery, Generic
             }
         }
 
-        return await Result.SuccessAsync(details);
+        var response = await Result.SuccessAsync(details);
+        await _cache.CreateAsync(cacheKey, response, ct);
+        return response;
     }
 }

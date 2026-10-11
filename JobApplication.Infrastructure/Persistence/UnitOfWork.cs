@@ -33,12 +33,6 @@ namespace JobApplication.Infrastructure.Persistence
         {
             return _context.SaveChangesAsync(ct);
         }
-
-        public Task<int> CommitAsync(CancellationToken cancellationToken = default)
-        {
-            return SaveChangesAsync(cancellationToken);
-        }
-
         public void Dispose()
         {
             _context.Dispose();

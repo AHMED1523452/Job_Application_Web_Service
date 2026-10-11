@@ -13,11 +13,13 @@ public sealed class GetUserJobApplicationsHandler
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
+    private readonly IApplicationCache _cache;
 
-    public GetUserJobApplicationsHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser)
+    public GetUserJobApplicationsHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser, IApplicationCache cache)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     public async Task<GenericResult<PaginatedResult<JobApplicationResponseDTO>>> Handle(
@@ -37,6 +39,10 @@ public sealed class GetUserJobApplicationsHandler
             cancellationToken);
         if (!ownsProfile)
             return await Result.FailureAsync<PaginatedResult<JobApplicationResponseDTO>>("The candidate profile in the URL does not belong to the authenticated user.");
+
+        var cacheKey = $"job-application:candidate:{query.CandidateProfileId}:user:{userId.Value}:page:{query.Page}:pageSize:{query.PageSize}:search:{Uri.EscapeDataString(query.Search?.Trim().ToLowerInvariant() ?? string.Empty)}:sort:{query.OrderBy}:{query.OrderDesc}";
+        var cached = await _cache.GetAsync<GenericResult<PaginatedResult<JobApplicationResponseDTO>>>(cacheKey, cancellationToken);
+        if (cached is not null) return cached;
 
         Expression<Func<JobApplications, bool>> predicate = application =>
             application.CandidateProfileId == query.CandidateProfileId
@@ -83,6 +89,8 @@ public sealed class GetUserJobApplicationsHandler
                 TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
             }
         };
-        return await Result.SuccessAsync(page, ResultMessages.PaginatedQueryCompleted);
+        var response = await Result.SuccessAsync(page, ResultMessages.PaginatedQueryCompleted);
+        await _cache.CreateAsync(cacheKey, response, cancellationToken);
+        return response;
     }
 }

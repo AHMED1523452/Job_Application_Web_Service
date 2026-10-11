@@ -14,11 +14,11 @@ namespace JobApplication.Infrastructure.Persistence
             this.dbContext = dbContext;
         }
 
-        public async Task AddAsync(TEntity entity, CancellationToken cancellationToken) => await dbContext.Set<TEntity>().AddAsync(entity);
+        public async Task AddAsync(TEntity entity, CancellationToken cancellationToken = default) => await dbContext.Set<TEntity>().AddAsync(entity);
 
-        public async Task EditAsync(TEntity enttiy, CancellationToken cancellationToken) =>  dbContext.Set<TEntity>().Update(enttiy);
+        public async Task EditAsync(TEntity enttiy, CancellationToken cancellationToken = default) =>  dbContext.Set<TEntity>().Update(enttiy);
 
-        public async Task RemoveAsync(TEntity enttiy, CancellationToken cancellationToken) => dbContext.Set<TEntity>().Remove(enttiy);
+        public async Task RemoveAsync(TEntity enttiy, CancellationToken cancellationToken = default) => dbContext.Set<TEntity>().Remove(enttiy);
 
 
         //. Focus on it (With bringing the model or DTO with tracking)
@@ -94,7 +94,7 @@ namespace JobApplication.Infrastructure.Persistence
 
         //. Without no tracking or includes just predicate 
         public async Task<TEntity> GetByIdAsync(Expression<Func<TEntity, bool>> predicate,
-                                                CancellationToken cancellationToken,
+                                                CancellationToken cancellationToken = default,
                                                 Expression<Func<TEntity, object?>>[]? includes = null)
         {
             IQueryable<TEntity> query = dbContext.Set<TEntity>();

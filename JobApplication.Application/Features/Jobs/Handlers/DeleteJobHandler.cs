@@ -8,11 +8,12 @@ public sealed class DeleteJobHandler : IRequestHandler<DeleteJobCommand, Generic
 {
     private readonly IUnitOfWork _uow; 
     private readonly ICurrentUserService _user;
-    public DeleteJobHandler(IUnitOfWork uow, 
-                            ICurrentUserService user)
+    private readonly IApplicationCache _cache;
+    public DeleteJobHandler(IUnitOfWork uow, ICurrentUserService user, IApplicationCache cache)
     {
         _uow=uow;
         _user=user;
+        _cache=cache;
     }
     public async Task<GenericResult<Guid>> Handle(DeleteJobCommand request,CancellationToken ct)
     {
@@ -34,6 +35,8 @@ public sealed class DeleteJobHandler : IRequestHandler<DeleteJobCommand, Generic
 
         await _uow.Repository<JobEntity>().EditAsync(job,ct);
         await _uow.SaveChangesAsync(ct);
+        await _cache.InvalidateAsync("job:", ct);
+        await _cache.InvalidateAsync("job-application:", ct);
 
         return await Result.SuccessAsync(job.Id,"Job archived successfully.");
     }

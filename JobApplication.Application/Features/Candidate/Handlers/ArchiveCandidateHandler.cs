@@ -9,11 +9,13 @@ public sealed class ArchiveCandidateHandler : IRequestHandler<ArchiveCandidateCo
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
+    private readonly IApplicationCache _cache;
 
-    public ArchiveCandidateHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser)
+    public ArchiveCandidateHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser, IApplicationCache cache)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     public async Task<GenericResult<Guid>> Handle(ArchiveCandidateCommand command, CancellationToken cancellationToken)
@@ -38,6 +40,8 @@ public sealed class ArchiveCandidateHandler : IRequestHandler<ArchiveCandidateCo
 
         await repository.EditAsync(candidate, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cache.InvalidateAsync("candidate:", cancellationToken);
+        await _cache.InvalidateAsync("job-application:", cancellationToken);
 
         return await Result.SuccessAsync(candidate.Id, "Candidate profile archived successfully.");
     }

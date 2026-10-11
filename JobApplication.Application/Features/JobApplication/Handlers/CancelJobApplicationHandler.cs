@@ -17,17 +17,20 @@ public sealed class CancelJobApplicationHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IIdentityService _identityService;
     private readonly IEmailNotificationQueue _emailQueue;
+    private readonly IApplicationCache _cache;
 
     public CancelJobApplicationHandler(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IIdentityService identityService,
-        IEmailNotificationQueue emailQueue)
+        IEmailNotificationQueue emailQueue,
+        IApplicationCache cache)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _identityService = identityService;
         _emailQueue = emailQueue;
+        _cache = cache;
     }
 
     public async Task<GenericResult<CancelJobApplicationResponse>> Handle(
@@ -67,6 +70,7 @@ public sealed class CancelJobApplicationHandler
         application.UpdatedByIp = _currentUser.UserIP();
         await applications.EditAsync(application, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cache.InvalidateAsync("job-application:", cancellationToken);
 
         var job = await _unitOfWork.Repository<JobEntity>().GetByIdAsync(
             item => item.Id == application.JobId,

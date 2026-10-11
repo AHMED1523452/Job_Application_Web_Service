@@ -54,7 +54,7 @@ namespace JobApplication.Infrastructure.Services
                 Audience = _jwtSettings.Value.Audience,
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(key),
-                    SecurityAlgorithms.HmacSha256Signature)
+                    SecurityAlgorithms.HmacSha256)
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -71,13 +71,13 @@ namespace JobApplication.Infrastructure.Services
             var key = Encoding.UTF8.GetBytes(_jwtSettings.Value.SecretKEY);
 
             var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, Id),
-            new(JwtRegisteredClaimNames.Email, Email),
-            new(JwtRegisteredClaimNames.Email, UserName),
-            new(JwtRegisteredClaimNames.Name, FullName),
-            new(ClaimTypes.NameIdentifier, Id)
-        };
+            {
+                new(JwtRegisteredClaimNames.Sub, Id),
+                new(JwtRegisteredClaimNames.Email, Email),
+                new(JwtRegisteredClaimNames.Email, UserName),
+                new(JwtRegisteredClaimNames.Name, FullName),
+                new(ClaimTypes.NameIdentifier, Id)
+            };
             if (role is not null)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
@@ -96,7 +96,7 @@ namespace JobApplication.Infrastructure.Services
                 Audience = _jwtSettings.Value.Audience,
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(key),
-                    SecurityAlgorithms.HmacSha256Signature)
+                    SecurityAlgorithms.HmacSha256)
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);

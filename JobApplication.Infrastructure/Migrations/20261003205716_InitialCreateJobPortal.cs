@@ -9,7 +9,7 @@ using NetTopologySuite.Geometries;
 namespace JobApplication.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class updates : Migration
+    public partial class InitialCreateJobPortal : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -110,6 +110,22 @@ namespace JobApplication.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_MediaFile", x => x.MediaFileID);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "records",
+                columns: table => new
+                {
+                    Key = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    RequestHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ResponseCode = table.Column<int>(type: "int", nullable: true),
+                    ResponseBody = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_IdempotencyRecord_Key", x => x.Key);
                 });
 
             migrationBuilder.CreateTable(
@@ -509,8 +525,7 @@ namespace JobApplication.Infrastructure.Migrations
                     Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    NotificationId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    NotificationId1 = table.Column<long>(type: "bigint", nullable: true),
+                    NotificationId = table.Column<long>(type: "bigint", nullable: true),
                     RecipientEmail = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Subject = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Body = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -529,8 +544,8 @@ namespace JobApplication.Infrastructure.Migrations
                         principalTable: "AspNetUsers",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_EmailNotification_Notification_NotificationId1",
-                        column: x => x.NotificationId1,
+                        name: "FK_EmailNotification_Notification_NotificationId",
+                        column: x => x.NotificationId,
                         principalTable: "Notification",
                         principalColumn: "Id");
                 });
@@ -678,7 +693,7 @@ namespace JobApplication.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CandidateProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    MinimumMatchScore = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    MinimumMatchScore = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
                     PreferredLocation = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     RemoteOnly = table.Column<bool>(type: "bit", nullable: false),
                     MinimumYearsOfExperience = table.Column<int>(type: "int", nullable: true),
@@ -780,7 +795,7 @@ namespace JobApplication.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     JobId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CandidateProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    MatchScore = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    MatchScore = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsViewed = table.Column<bool>(type: "bit", nullable: false),
                     IsDismissed = table.Column<bool>(type: "bit", nullable: false),
@@ -821,7 +836,7 @@ namespace JobApplication.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     JobId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CandidateProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    MatchScore = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    MatchScore = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsViewed = table.Column<bool>(type: "bit", nullable: false),
                     IsDismissed = table.Column<bool>(type: "bit", nullable: false),
@@ -850,11 +865,12 @@ namespace JobApplication.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     JobId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SkillId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     RequirementType = table.Column<int>(type: "int", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsRequired = table.Column<bool>(type: "bit", nullable: false),
-                    Weight = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Weight = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     ExpectedValue = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     IsArchived = table.Column<bool>(type: "bit", nullable: false),
@@ -878,6 +894,11 @@ namespace JobApplication.Infrastructure.Migrations
                         principalTable: "Jobs",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_JobRequirements_Skills_SkillId",
+                        column: x => x.SkillId,
+                        principalTable: "Skills",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1018,9 +1039,9 @@ namespace JobApplication.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     JobApplicationId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    AtsScore = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    RequirementsScore = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    FinalScore = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    AtsScore = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    RequirementsScore = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    FinalScore = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Decision = table.Column<int>(type: "int", nullable: false),
                     TotalRequirementsCount = table.Column<int>(type: "int", nullable: false),
                     MatchedRequirementsCount = table.Column<int>(type: "int", nullable: false),
@@ -1133,7 +1154,7 @@ namespace JobApplication.Infrastructure.Migrations
                     AtsAnalysisId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     JobRequirementId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Result = table.Column<int>(type: "int", nullable: false),
-                    Score = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Score = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Evidence = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     JobRequirementsId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
@@ -1172,6 +1193,32 @@ namespace JobApplication.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ChatParticipants",
+                columns: table => new
+                {
+                    ChatId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    JoinedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    LastReadAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ChatParticipants", x => new { x.ChatId, x.UserId });
+                    table.ForeignKey(
+                        name: "FK_ChatParticipants_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ChatParticipants_Chat_ChatId",
+                        column: x => x.ChatId,
+                        principalTable: "Chat",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Message",
                 columns: table => new
                 {
@@ -1181,7 +1228,10 @@ namespace JobApplication.Infrastructure.Migrations
                     Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     MediaFileId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     IsRead = table.Column<bool>(type: "bit", nullable: false),
-                    SentAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    SentAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EditedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1344,9 +1394,14 @@ namespace JobApplication.Infrastructure.Migrations
                 column: "JobApplicationId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_EmailNotification_NotificationId1",
+                name: "IX_ChatParticipants_UserId",
+                table: "ChatParticipants",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EmailNotification_NotificationId",
                 table: "EmailNotification",
-                column: "NotificationId1");
+                column: "NotificationId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_EmailNotification_UserId",
@@ -1398,6 +1453,11 @@ namespace JobApplication.Infrastructure.Migrations
                 name: "IX_JobRequirements_JobId",
                 table: "JobRequirements",
                 column: "JobId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_JobRequirements_SkillId",
+                table: "JobRequirements",
+                column: "SkillId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Jobs_HrProfileId",
@@ -1531,6 +1591,9 @@ namespace JobApplication.Infrastructure.Migrations
                 name: "CandidateView");
 
             migrationBuilder.DropTable(
+                name: "ChatParticipants");
+
+            migrationBuilder.DropTable(
                 name: "EmailNotification");
 
             migrationBuilder.DropTable(
@@ -1547,6 +1610,9 @@ namespace JobApplication.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "Message");
+
+            migrationBuilder.DropTable(
+                name: "records");
 
             migrationBuilder.DropTable(
                 name: "refreshTokens");
@@ -1570,9 +1636,6 @@ namespace JobApplication.Infrastructure.Migrations
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "Skills");
-
-            migrationBuilder.DropTable(
                 name: "Notification");
 
             migrationBuilder.DropTable(
@@ -1586,6 +1649,9 @@ namespace JobApplication.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "jobApplications");
+
+            migrationBuilder.DropTable(
+                name: "Skills");
 
             migrationBuilder.DropTable(
                 name: "CandidateCVs");

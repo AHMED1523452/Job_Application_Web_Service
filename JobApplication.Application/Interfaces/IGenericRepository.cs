@@ -6,11 +6,11 @@ namespace JobApplication.Application.Interfaces
 {
     public interface IGenericRepository<TEntity> where TEntity : class
     {
-         Task AddAsync(TEntity entity, CancellationToken cancellationToken);
+         Task AddAsync(TEntity entity, CancellationToken cancellationToken = default);
 
-         Task EditAsync(TEntity enttiy, CancellationToken cancellationToken);
+         Task EditAsync(TEntity enttiy, CancellationToken cancellationToken = default);
 
-         Task RemoveAsync(TEntity enttiy, CancellationToken cancellationToken);
+         Task RemoveAsync(TEntity enttiy, CancellationToken cancellationToken= default);
 
 
         Task<TEntity> GetByIdAsyncWithTracking(Expression<Func<TEntity, bool>> predicate,
@@ -23,7 +23,7 @@ namespace JobApplication.Application.Interfaces
                                                       params Expression<Func<TEntity, object?>>[]? includes);
 
         Task<TEntity> GetByIdAsync(Expression<Func<TEntity, bool>> predicate,
-                                                CancellationToken cancellationToken,
+                                                CancellationToken cancellationToken = default,
                                                 Expression<Func<TEntity, object?>>[]? includes  = null);
 
          Task<IEnumerable<TResult>> GetAllAsync<TResult>(

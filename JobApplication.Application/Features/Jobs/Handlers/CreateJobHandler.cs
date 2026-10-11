@@ -16,16 +16,19 @@ public sealed class CreateJobHandler : IRequestHandler<CreateJobCommand, Generic
     private readonly ICurrentUserService _currentUser;
     private readonly IMapper _mapper;
     private readonly IBackgroundJobService _backgroundJobs;
+    private readonly IApplicationCache _cache;
 
     public CreateJobHandler(IUnitOfWork unitOfWork,
                             ICurrentUserService currentUser,
                             IMapper mapper, 
-                            IBackgroundJobService backgroundJobs)
+                            IBackgroundJobService backgroundJobs,
+                            IApplicationCache cache)
     {   
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _mapper = mapper;
-        _backgroundJobs = backgroundJobs; }
+        _backgroundJobs = backgroundJobs;
+        _cache = cache; }
 
     public async Task<GenericResult<JobDetailsResponseDTO>> Handle(CreateJobCommand command, CancellationToken ct)
     {
@@ -61,13 +64,16 @@ public sealed class CreateJobHandler : IRequestHandler<CreateJobCommand, Generic
 
         await _unitOfWork.Repository<JobEntity>().AddAsync(job, ct);
         await _unitOfWork.SaveChangesAsync(ct);
+        await _cache.InvalidateAsync("job:", ct);
         await ScheduleDeadlineCloseAsync(job);
         return await Result.SuccessAsync(await JobHandlerHelpers.ToDetailsAsync(_unitOfWork, _mapper, job, userId, ct), "Job created successfully.");
     }
 
+    //. Schedule a background job to close the job if the application deadline has passed
     private Task ScheduleDeadlineCloseAsync(JobEntity job)
     {
-        if (job.jobStatus != JobStatus.Published || !job.ApplicationDeadlineUtc.HasValue) return Task.CompletedTask;
+        //. Validating if the job is published and has an application deadline
+        if (job.jobStatus != JobStatus.Published || !job.ApplicationDeadlineUtc.HasValue) return Task.CompletedTask; //. not best practice to return null, so we return a completed task instead
         var delay = job.ApplicationDeadlineUtc.Value - DateTime.UtcNow;
         return _backgroundJobs.Schedule<IJobDeadlineService>(service => service.CloseIfExpiredAsync(job.Id), delay > TimeSpan.Zero ? delay : TimeSpan.Zero);
     }

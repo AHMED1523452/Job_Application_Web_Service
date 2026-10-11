@@ -17,17 +17,23 @@ public sealed class CreateJobApplicationHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IIdentityService _identityService;
     private readonly IEmailNotificationQueue _emailQueue;
+    private readonly IApplicationCache _cache;
+    private readonly AutoMapper.IMapper _mapper;
 
     public CreateJobApplicationHandler(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IIdentityService identityService,
-        IEmailNotificationQueue emailQueue)
+        IEmailNotificationQueue emailQueue,
+        IApplicationCache cache,
+        AutoMapper.IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _identityService = identityService;
         _emailQueue = emailQueue;
+        _cache = cache;
+        _mapper = mapper;
     }
 
     public async Task<GenericResult<CreateJobApplicationResponseDTO>> Handle(
@@ -83,25 +89,24 @@ public sealed class CreateJobApplicationHandler
         }
 
         var now = DateTime.UtcNow;
-        var application = new JobApplications
-        {
-            Id = Guid.NewGuid(),
-            JobId = job.Id,
-            CandidateProfileId = candidate.Id,
-            CandidateCvId = command.requestDTO.CandidateCvId,
-            CoverLetter = command.requestDTO.Description.Trim(),
-            Status = JobApplicationStatus.Applied,
-            AppliedAtUtc = now,
-            CreatedAt = now,
-            UpdatedAt = now,
-            CreatedBy = userId.Value.ToString(),
-            UpdatedBy = userId.Value.ToString(),
-            CreatedByIp = _currentUser.UserIP(),
-            IsActive = true
-        };
+        var application = _mapper.Map<JobApplications>(command.requestDTO);
+        application.Id = Guid.NewGuid();
+        application.CandidateProfileId = candidate.Id;
+        application.Status = JobApplicationStatus.Applied;
+        application.AppliedAtUtc = now;
+        application.CreatedAt = now;
+        application.UpdatedAt = now;
+        application.CreatedBy = userId.Value.ToString();
+        application.UpdatedBy = userId.Value.ToString();
+        application.CreatedByIp = _currentUser.UserIP();
+        application.IsActive = true;
 
         await applications.AddAsync(application, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cache.InvalidateAsync("job-application:", cancellationToken);
+        // Job details cache the application count, so adding an application makes
+        // the cached details for this job stale as well.
+        await _cache.InvalidateAsync($"job:by-id:{job.Id}:", cancellationToken);
 
         var recruiter = await _unitOfWork.Repository<HrProfile>().GetByIdAsync(
             profile => profile.Id == job.HrProfileId && !profile.IsDeleted && !profile.IsArchived,

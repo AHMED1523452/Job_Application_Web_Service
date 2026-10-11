@@ -14,15 +14,18 @@ public sealed class UpdateJobHandler : IRequestHandler<UpdateJobCommand, Generic
     private readonly IUnitOfWork _uow; 
     private readonly ICurrentUserService _user;
     private readonly IMapper _mapper; private readonly IBackgroundJobService _backgroundJobs;
+    private readonly IApplicationCache _cache;
     public UpdateJobHandler(IUnitOfWork uow,
                             ICurrentUserService user, 
                             IMapper mapper, 
-                            IBackgroundJobService backgroundJobs)
+                            IBackgroundJobService backgroundJobs,
+                            IApplicationCache cache)
     { 
         _uow=uow;
         _user=user; 
         _mapper=mapper;
         _backgroundJobs=backgroundJobs;
+        _cache=cache;
     }
     public async Task<GenericResult<JobDetailsResponseDTO>> Handle(UpdateJobCommand request, CancellationToken ct)
     {
@@ -62,6 +65,8 @@ public sealed class UpdateJobHandler : IRequestHandler<UpdateJobCommand, Generic
 
         job.JobRequirements=await JobHandlerHelpers.MapRequirementsAsync(_uow, job.Id, request.Request.Requirements, ct);
         await _uow.Repository<JobEntity>().EditAsync(job, ct); await _uow.SaveChangesAsync(ct);
+        await _cache.InvalidateAsync("job:", ct);
+        await _cache.InvalidateAsync("job-application:", ct);
         if(job.jobStatus==JobStatus.Published&&job.ApplicationDeadlineUtc.HasValue)
         {
             var delay=job.ApplicationDeadlineUtc.Value-DateTime.UtcNow;

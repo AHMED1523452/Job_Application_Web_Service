@@ -8,6 +8,7 @@ using JobApplication.Infrastructure.Persistence;
 using JobApplication.Infrastructure.Services.Email;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Cryptography;
+using System.Net;
 
 namespace JobApplication.Infrastructure.Services
 {
@@ -439,6 +440,43 @@ namespace JobApplication.Infrastructure.Services
             result.IsSuccess = true;
             result.Message = "Password reset successfully. You can now login.";
             return result;
+        }
+
+        public async Task<GenericResult<string>> ChangePasswordAsync(
+            Guid userId,
+            ChangePasswordRequestDTO request,
+            CancellationToken cancellationToken)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user is null)
+                return await Result.FailureAsync<string>("User account was not found.");
+
+            var changeResult = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+            if (!changeResult.Succeeded)
+            {
+                var errors = string.Join(" ", changeResult.Errors.Select(error => error.Description));
+                return await Result.FailureAsync<string>(string.IsNullOrWhiteSpace(errors)
+                    ? "Password could not be changed."
+                    : errors);
+            }
+
+            await RevokeAllRefreshTokensAsync(user.Id, cancellationToken);
+
+            // Notify only after Identity has persisted the change. Never include the password in email.
+            if (!string.IsNullOrWhiteSpace(user.Email))
+            {
+                var safeName = WebUtility.HtmlEncode(user.FullName);
+                var body = $"<p>Hello {safeName},</p><p>Your HireSense password was changed successfully.</p>" +
+                           $"<p>If you did not make this change, contact support immediately.</p><p>Time (UTC): {DateTime.UtcNow:O}</p>";
+                await _emailNotificationQueue.QueueAsync(
+                    user.Id,
+                    user.Email,
+                    "Password changed",
+                    body,
+                    cancellationToken: cancellationToken);
+            }
+
+            return await Result.SuccessAsync("Password changed successfully. A security notice was queued to your email.");
         }
 
         public async Task<GenericResult<string>> LogoutAsync(LogoutRequestDTO request, CancellationToken cancellationToken)
