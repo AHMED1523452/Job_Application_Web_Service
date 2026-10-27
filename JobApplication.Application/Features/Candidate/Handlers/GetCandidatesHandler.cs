@@ -1,9 +1,11 @@
 using AutoMapper;
+using FluentValidation;
 using JobApplication.Application.Features.Candidate.DTOs;
 using JobApplication.Application.Features.Candidate.Queries;
 using JobApplication.Application.Interfaces;
 using JobApplication.Application.Patterns;
 using MediatR;
+using System.Linq.Expressions;
 
 namespace JobApplication.Application.Features.Candidate.Handlers;
 
@@ -31,7 +33,7 @@ public sealed class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, G
         var cached = await _cache.GetAsync<GenericResult<PaginatedResult<CandidateResponseDTO>>>(cacheKey, cancellationToken);
         if (cached is not null) return cached;
 
-        System.Linq.Expressions.Expression<Func<Domain.Entities.CandidateProfile, bool>>? predicate = null;
+        Expression<Func<Domain.Entities.CandidateProfile, bool>>? predicate = null;
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var search = query.Search.Trim();

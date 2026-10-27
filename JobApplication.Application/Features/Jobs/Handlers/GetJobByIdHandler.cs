@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.Jobs.DTOs;
 using JobApplication.Application.Features.Jobs.Queries;
 using JobApplication.Application.Interfaces;
@@ -5,7 +6,6 @@ using JobApplication.Application.Patterns;
 using JobApplication.Domain.Entities;
 using JobApplication.Domain.Enums;
 using MediatR;
-
 using JobEntity = JobApplication.Domain.Entities.Jobs;
 
 namespace JobApplication.Application.Features.Jobs.Handlers;
@@ -67,16 +67,15 @@ public sealed class GetJobByIdHandler : IRequestHandler<GetJobByIdQuery, Generic
 
         if (userId.HasValue)
         {
-            var candidateProfileId = await _unitOfWork.Repository<CandidateProfile>()
-                .GetByIdAsNoTrackingAsync<Guid?>(
-                    profile => profile.UserId == userId.Value && !profile.IsDeleted && !profile.IsArchived,
-                    profile => (Guid?)profile.Id,
-                    ct);
+            var candidateProfileId = await _unitOfWork.Repository<CandidateProfile>().GetByIdAsNoTrackingAsync<Guid?>(
+                profile => profile.UserId == userId.Value && !profile.IsDeleted && !profile.IsArchived,
+                profile => (Guid?)profile.Id,
+                ct);
 
             if (candidateProfileId.HasValue)
             {
-                details.IsSavedByCurrentUser = await _unitOfWork.Repository<SavedJobs>()
-                    .AnyAsync(saved => saved.JobId == request.Id
+                details.IsSavedByCurrentUser = await _unitOfWork.Repository<SavedJobs>().AnyAsync(
+                    saved => saved.JobId == request.Id
                         && saved.CandidateProfileId == candidateProfileId.Value, ct);
             }
         }
@@ -85,4 +84,9 @@ public sealed class GetJobByIdHandler : IRequestHandler<GetJobByIdQuery, Generic
         await _cache.CreateAsync(cacheKey, response, ct);
         return response;
     }
+}
+
+public class GetJobByIdQueryValidator : AbstractValidator<GetJobByIdQuery>
+{
+    public GetJobByIdQueryValidator() => RuleFor(x => x.Id).NotEmpty();
 }

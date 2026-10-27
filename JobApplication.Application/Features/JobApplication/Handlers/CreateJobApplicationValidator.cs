@@ -1,8 +1,5 @@
 ﻿using FluentValidation;
 using JobApplication.Application.Features.JobApplication.Commands;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace JobApplication.Application.Features.JobApplication.Handlers
 {
@@ -29,4 +26,5 @@ namespace JobApplication.Application.Features.JobApplication.Handlers
                 .WithMessage("Description cannot exceed 1000 characters.");
         }
     }
+
 }

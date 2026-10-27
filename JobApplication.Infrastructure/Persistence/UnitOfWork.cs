@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
+﻿
 using JobApplication.Application.Interfaces;
 
 namespace JobApplication.Infrastructure.Persistence

@@ -1,6 +1,6 @@
 namespace JobApplication.Application.Features.Candidate.DTOs;
 
-public sealed class CandidateEducationRequestDTO
+public sealed class UpdateCandidateEducationRequestDTO
 {
     public Guid? Id { get; set; }
     public string InstitutionName { get; set; } = string.Empty;

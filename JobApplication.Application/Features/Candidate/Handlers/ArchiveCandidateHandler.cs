@@ -37,6 +37,7 @@ public sealed class ArchiveCandidateHandler : IRequestHandler<ArchiveCandidateCo
         candidate.UpdatedAt = DateTime.UtcNow;
         candidate.UpdatedBy = userId.Value.ToString();
         candidate.UpdatedByIp = _currentUser.UserIP();
+        candidate.IsDeleted = true;
 
         await repository.EditAsync(candidate, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

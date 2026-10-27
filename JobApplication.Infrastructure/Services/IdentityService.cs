@@ -33,9 +33,11 @@ namespace JobApplication.Infrastructure.Services
             return true;
         }
 
-        public async Task<UserContactInfo?> GetUserContactAsync(Guid userId, CancellationToken cancellationToken)
+        public async Task<UserContactInfo?> GetUserContactAsync(Guid userId,
+                                                                CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
             var user = await userManager.FindByIdAsync(userId.ToString());
             if (user is null || string.IsNullOrWhiteSpace(user.Email))
                 return null;

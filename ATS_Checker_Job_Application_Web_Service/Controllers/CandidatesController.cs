@@ -5,6 +5,7 @@ using JobApplication.Application.Patterns;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ATS_Checker_Job_Application_Web_Service.Controllers;
 
@@ -16,15 +17,28 @@ public sealed class CandidatesController : ControllerBase
 
     public CandidatesController(IMediator mediator) => _mediator = mediator;
 
-    [Authorize(Roles = "User")]
+    [Authorize]
     [HttpPost]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(GenericResult<CandidateResponseDTO>), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<GenericResult<CandidateResponseDTO>>> Create(
-        CandidateRequestDTO request,
+        [FromForm] CreateCandidateRequestDTO request,
         CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(new CreateCandidateCommand(request), cancellationToken);
+        //. open and read the file using Stream 
+        await using var imageStream = request.profileImage?.OpenReadStream();
+        var imageRequest = request.profileImage is null 
+            ? null
+            : new CandidateProfileImageUploadDTO
+            {
+                FileStream = imageStream!,
+                FileName = request.profileImage.FileName,
+                ContentType = request.profileImage.ContentType,
+                FileSize = request.profileImage.Length
+            };
+
+        var result = await _mediator.Send(new CreateCandidateCommand(request, imageRequest), cancellationToken);
 
         if (!result.IsSuccess) return Conflict(result);  //. existing candidate profile for the user, return 409 Conflict
         return CreatedAtAction(nameof(GetMine), result); //. 201 Created with the created candidate profile (return the result of GetMine action)
@@ -32,8 +46,9 @@ public sealed class CandidatesController : ControllerBase
 
     [Authorize(Roles = "User")]
     [HttpPost("mine/cvs")]
-    [Consumes("multipart/form-data")] //. IForm form in the request body, which is used to upload files
-    [ProducesResponseType(typeof(GenericResult<CandidateCvResponseDTO>), StatusCodes.Status201Created)]
+    [EnableRateLimiting("Upload")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(GenericResult<CandidateCvResponseDTO>), StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<GenericResult<CandidateCvResponseDTO>>> UploadMyCv(
         IFormFile file,
@@ -54,7 +69,36 @@ public sealed class CandidatesController : ControllerBase
 
         var result = await _mediator.Send(new UploadCandidateCvCommand(request), cancellationToken);
         if (!result.IsSuccess) return BadRequest(result);
-        return StatusCode(StatusCodes.Status201Created, result);
+
+        return StatusCode(StatusCodes.Status202Accepted, result);
+    }
+
+    [Authorize(Roles = "User")]
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(GenericResult<CandidateResponseDTO>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GenericResult<CandidateResponseDTO>>> Update(
+        Guid id,
+        [FromBody] UpdateCandidateRequestDTO request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new UpdateCandidateCommand(id, request), cancellationToken);
+        if (result.IsSuccess) return Ok(result);
+        if (result.Message == "Candidate profile not found.") return NotFound(result);
+        if (result.Message == "You can only update your own candidate profile.") return Forbid();
+        return BadRequest(result);
+    }
+
+    [Authorize(Roles = "User")]
+    [HttpDelete("mine")]
+    [ProducesResponseType(typeof(GenericResult<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GenericResult<Guid>>> ArchiveMine(CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new ArchiveCandidateCommand(), cancellationToken);
+        return result.IsSuccess ? Ok(result) : NotFound(result);
     }
 
     [Authorize(Roles = "User")]
@@ -67,33 +111,6 @@ public sealed class CandidatesController : ControllerBase
         return result.IsSuccess ? Ok(result) : NotFound(result);
     }
 
-    [Authorize(Roles = "User")]
-    [HttpPut("{id:guid}")]
-    [ProducesResponseType(typeof(GenericResult<CandidateResponseDTO>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<GenericResult<CandidateResponseDTO>>> Update(
-        Guid id,
-        [FromBody] CandidateRequestDTO request,
-        CancellationToken cancellationToken)
-    {
-        var result = await _mediator.Send(new UpdateCandidateCommand(id, request), cancellationToken);
-        if (result.IsSuccess) return Ok(result);
-        if (result.Message == "Candidate profile not found.") return NotFound(result);
-        if (result.Message == "You can only update your own candidate profile.") return Forbid();
-        return BadRequest(result);
-    }
-
-    [Authorize(Roles = "User")]
-    [HttpDelete("mine")]
-    [ProducesResponseType(typeof(GenericResult<Guid>), StatusCodes. Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<GenericResult<Guid>>> ArchiveMine(CancellationToken cancellationToken)
-    {
-        var result = await _mediator.Send(new ArchiveCandidateCommand(), cancellationToken);
-        return result.IsSuccess ? Ok(result) : NotFound(result);
-    }
 
     [Authorize(Roles = "Recruiter,Admin")]
     [HttpGet]

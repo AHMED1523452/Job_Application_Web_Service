@@ -1,14 +1,15 @@
-using FluentValidation;
+﻿using FluentValidation;
 using JobApplication.Application.Features.Candidate.Commands;
 using JobApplication.Application.Interfaces;
-
-namespace JobApplication.Application.Features.Candidate.Handlers;
-
-public sealed class UpdateCandidateCommandValidator : AbstractValidator<UpdateCandidateCommand>
+namespace JobApplication.Application.Features.Candidate.Handlers
 {
-    public UpdateCandidateCommandValidator(IUnitOfWork unitOfWork)
+    public class UpdateCandidateCommandValidator : AbstractValidator<UpdateCandidateCommand>
     {
-        RuleFor(x => x.Id).NotEmpty();
-        RuleFor(x => x.Request).NotNull().SetValidator(new CandidateRequestDTOValidator(unitOfWork));
+        public UpdateCandidateCommandValidator(IUnitOfWork unitOfWork)
+        {
+            RuleFor(x => x.Id).NotEmpty();
+            RuleFor(x => x.Request).NotNull()
+                        .SetValidator(new UpdateCandidateRequestDTOValidator(unitOfWork));
+        }
     }
 }

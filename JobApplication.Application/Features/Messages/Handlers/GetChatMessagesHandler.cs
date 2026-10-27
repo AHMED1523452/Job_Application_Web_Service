@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.Messages.DTOs;
 using JobApplication.Application.Features.Messages.Queries;
 using JobApplication.Application.Interfaces;
@@ -60,5 +61,15 @@ public sealed class GetChatMessagesHandler : IRequestHandler<GetChatMessagesQuer
             }
         };
         return await Result.SuccessAsync(page, "Messages loaded.");
+    }
+}
+
+public class GetChatMessagesQueryValidator : AbstractValidator<GetChatMessagesQuery>
+{
+    public GetChatMessagesQueryValidator()
+    {
+        RuleFor(query => query.ChatId).NotEmpty();
+        RuleFor(query => query.Page).GreaterThan(0);
+        RuleFor(query => query.PageSize).InclusiveBetween(1, 100);
     }
 }

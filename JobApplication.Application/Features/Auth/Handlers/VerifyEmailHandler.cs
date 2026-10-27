@@ -1,9 +1,11 @@
+using FluentValidation;
 using JobApplication.Application.Patterns;
 using JobApplication.Domain.Entities;
 using JobApplication.Application.Interfaces;
 using MediatR;
-using JobApplication.Application.Interfaces;
 using JobApplication.Application.Features.Auth.Commands;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace JobApplication.Application.Features.Auth.Handlers
 {
@@ -58,7 +60,7 @@ namespace JobApplication.Application.Features.Auth.Handlers
             codeRecord.IsUsed = true;
 
             bool confirmed = await service.ConfirmEmailAsync(request.Request.Email, cancellationToken);
-            if(!confirmed)
+            if (!confirmed)
             {
                 result.Message = "There is no user with this email";
                 result.IsSuccess = false;
@@ -70,6 +72,20 @@ namespace JobApplication.Application.Features.Auth.Handlers
             result.IsSuccess = true;
             result.Message = "Email verified. You can now login.";
             return result;
+        }
+    }
+
+    public class VerifyEmailCommandValidator : AbstractValidator<VerifyEmailCommand>
+    {
+        public VerifyEmailCommandValidator()
+        {
+            RuleFor(x => x.Request.Email)
+                .NotEmpty().WithMessage("Email is required.")
+                .EmailAddress().WithMessage("Email must be a valid email address.");
+
+            RuleFor(x => x.Request.Code)
+                .NotEmpty().WithMessage("Verification code is required.")
+                .Length(6).WithMessage("Verification code must be 6 digits.");
         }
     }
 }

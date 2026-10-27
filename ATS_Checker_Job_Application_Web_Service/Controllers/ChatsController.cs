@@ -5,6 +5,7 @@ using JobApplication.Application.Patterns;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ATS_Checker_Job_Application_Web_Service.Controllers;
 
@@ -23,6 +24,7 @@ public sealed class ChatsController : ControllerBase
 
     [HttpGet("mine")]
     [ProducesResponseType(typeof(GenericResult<PaginatedResult<ChatResponseDTO>>), StatusCodes.Status200OK)]
+
     public async Task<IActionResult> GetMine([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) =>
         ToActionResult(await _mediator.Send(new GetMyChatsQuery(page, pageSize), ct));
 

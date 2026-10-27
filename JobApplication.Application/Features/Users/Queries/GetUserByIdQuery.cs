@@ -1,0 +1,10 @@
+using MediatR;
+using JobApplication.Application.Patterns;
+using JobApplication.Application.Features.Users.DTOs;
+
+namespace JobApplication.Application.Features.Users.Queries
+{
+    public record GetUserByIdQuery(
+        Guid UserId
+    ) : IRequest<GenericResult<UserResponseDTO>>;
+}

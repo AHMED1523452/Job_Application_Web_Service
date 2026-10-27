@@ -118,9 +118,6 @@ namespace JobApplication.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ExtractedText")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("FileHash")
                         .HasColumnType("nvarchar(max)");
 
@@ -223,6 +220,38 @@ namespace JobApplication.Infrastructure.Migrations
                     b.HasIndex("CandidateProfileId");
 
                     b.ToTable("CandidateCertification");
+                });
+
+            modelBuilder.Entity("JobApplication.Domain.Entities.CandidateCvExtraction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CandidateCvId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExtractedText")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateCvId")
+                        .IsUnique();
+
+                    b.ToTable("CandidateCvExtractions");
                 });
 
             modelBuilder.Entity("JobApplication.Domain.Entities.CandidateEducation", b =>
@@ -806,7 +835,7 @@ namespace JobApplication.Infrastructure.Migrations
                     b.Property<string>("CompanyLocation")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("CompanyLogo")
+                    b.Property<string>("CompanyLogoPath")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("CompanyName")
@@ -2283,6 +2312,17 @@ namespace JobApplication.Infrastructure.Migrations
                     b.Navigation("CandidateProfile");
                 });
 
+            modelBuilder.Entity("JobApplication.Domain.Entities.CandidateCvExtraction", b =>
+                {
+                    b.HasOne("JobApplication.Domain.Entities.CandidateCVs", "CandidateCv")
+                        .WithOne("Extraction")
+                        .HasForeignKey("JobApplication.Domain.Entities.CandidateCvExtraction", "CandidateCvId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CandidateCv");
+                });
+
             modelBuilder.Entity("JobApplication.Domain.Entities.CandidateEducation", b =>
                 {
                     b.HasOne("JobApplication.Domain.Entities.CandidateProfile", "CandidateProfile")
@@ -2759,6 +2799,8 @@ namespace JobApplication.Infrastructure.Migrations
             modelBuilder.Entity("JobApplication.Domain.Entities.CandidateCVs", b =>
                 {
                     b.Navigation("Applications");
+
+                    b.Navigation("Extraction");
                 });
 
             modelBuilder.Entity("JobApplication.Domain.Entities.CandidateProfile", b =>

@@ -1,6 +1,10 @@
 ﻿
 namespace JobApplication.Domain.Entities
 {
+    /// <summary>
+    /// the number of guests that viewed this job now or viewed already 
+    ///                 using the header and that's meaning that should be authenticated or signned in
+    /// </summary>
     public  class JobView
     {
         public Guid Id { get; set; }

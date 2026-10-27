@@ -1,4 +1,5 @@
-﻿using JobApplication.Application.Features.Candidate.DTOs;
+﻿using FluentValidation;
+using JobApplication.Application.Features.Candidate.DTOs;
 using JobApplication.Application.Features.Skills.DTOs;
 using JobApplication.Application.Features.Skills.Queries;
 using JobApplication.Application.Interfaces;
@@ -33,10 +34,10 @@ namespace JobApplication.Application.Features.Skills.Handlers
 
             var existingSkill = await unitOfWork.Repository<Skill>()
                         .GetByIdAsNoTrackingAsync(predicate: op => op.Id == request.Id &&
-                                                             op.IsActive &&
-                                                             !op.IsArchived &&
-                                                             !op.IsDeleted,
-                                                   selector: op => new SkillsDTO
+                                                                 op.IsActive &&
+                                                                 !op.IsArchived &&
+                                                                 !op.IsDeleted,
+                                               selector: op => new SkillsDTO
                                                              {
                                                                  Name = op.Name,
                                                                  SkillCategoryId = op.SkillCategoryId,
@@ -52,5 +53,10 @@ namespace JobApplication.Application.Features.Skills.Handlers
 
             return result;
         }
+    }
+
+    public class GetSkillByIdQueryValidator : AbstractValidator<GetSkillByIdQuery>
+    {
+        public GetSkillByIdQueryValidator() => RuleFor(x => x.Id).NotEmpty();
     }
 }

@@ -1,4 +1,5 @@
-﻿using JobApplication.Application.Features.Skills.DTOs;
+﻿using FluentValidation;
+using JobApplication.Application.Features.Skills.DTOs;
 using JobApplication.Application.Features.Skills.Queries;
 using JobApplication.Application.Interfaces;
 using JobApplication.Application.Patterns;
@@ -27,7 +28,6 @@ namespace JobApplication.Application.Features.Skills.Handlers
             IGenericRepository<Skill> instace = unitOfWork.Repository<Skill>();
             if (instace is null) throw new ArgumentNullException(nameof(instace));
 
-            //. will be used in caching 
             var searchKey = Uri.EscapeDataString(request.search?.Trim().ToLowerInvariant() ?? string.Empty);
             var userId = userService.GetCurrentUserIdOrNull()?.ToString() ?? "anonymous";
 
@@ -35,20 +35,19 @@ namespace JobApplication.Application.Features.Skills.Handlers
             var cached = await cache.GetAsync<GenericResult<PaginatedResult<SkillsDTO>>>(cacheKey, cancellationToken);
             if (cached is not null) return cached;
 
-
             Expression<Func<Skill, bool>> predicate;
             if (!string.IsNullOrWhiteSpace(request.search))
             {
-                //. removing the spaces from the Search string and after that search in the values and the description column
                 var search = request.search.Trim();
-                predicate = candidate => !candidate.IsDeleted && !candidate.IsArchived && candidate.IsActive
-                        || (candidate.Description != null && candidate.Description.Contains(search));
+                predicate = skill => !skill.IsDeleted && !skill.IsArchived && skill.IsActive
+                        && (skill.Description != null && skill.Description.Contains(search));
             }
             else
             {
-                predicate = candidate => !candidate.IsDeleted && !candidate.IsArchived && candidate.IsActive;
+                predicate = candidate => !candidate.IsDeleted
+                                      && !candidate.IsArchived
+                                      && candidate.IsActive;
             }
-
 
             var paginatedResult = await instace
                          .GetPagedAsync(page: request.page,
@@ -66,19 +65,29 @@ namespace JobApplication.Application.Features.Skills.Handlers
 
             var result = new PaginatedResult<SkillsDTO>
             {
-                Items = paginatedResult.Items,
+                Items = paginatedResult.Items.ToList(),
                 Pagination = new PaginationMetadata
                 {
                     Page = request.page,
                     PageSize = request.pageSize,
                     TotalCount = paginatedResult.TotalCount,
-                    TotalPages = (int)Math.Ceiling(paginatedResult.TotalCount / (double)request.pageSize)
+                    TotalPages = (int)Math.Ceiling(paginatedResult.TotalCount / (double)request.pageSize!)
                 }
             };
 
             var response = await Result.SuccessAsync(result, "Skills retrieved successfully.");
             await cache.CreateAsync(cacheKey, response, cancellationToken);
             return response;
+        }
+    }
+
+    public class GetSkillsQueryValidator : AbstractValidator<GetSkillsQuery>
+    {
+        public GetSkillsQueryValidator()
+        {
+            RuleFor(x => x.page).GreaterThan(0);
+            RuleFor(x => x.pageSize).InclusiveBetween(1, 100);
+            RuleFor(x => x.search).MaximumLength(100);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿
+﻿using FluentValidation;
 using JobApplication.Application.Features.Skills.Commands;
 using JobApplication.Application.Features.Skills.DTOs;
 using JobApplication.Application.Interfaces;
@@ -33,17 +33,17 @@ namespace JobApplication.Application.Features.Skills.Handlers
             var normalizedName = request.requestDTO.Name.Trim();
             //.the one that created the skill must be the same person that will update 
             Skill existingSkill = await instance.GetByIdAsyncWithTracking(predicate: skill => skill.Id == request.Id &&
-                                                                        skill.CreatedBy == userId.ToString() &&
-                                                                        !skill.IsArchived &&
-                                                                        skill.IsActive &&
-                                                                        !skill.IsDeleted, cancellationToken);
+                                                                         skill.CreatedBy == userId.ToString() &&
+                                                                         !skill.IsArchived &&
+                                                                         skill.IsActive &&
+                                                                         !skill.IsDeleted, cancellationToken);
             if (existingSkill is null) return await Result.FailureAsync<CreateSkillsResponseDTO>("Skill not found");
 
             //. Duplication validating 
             if (await instance.AnyAsync(skill => skill.Name.ToLower() == normalizedName.ToLower() &&
-                                            !skill.IsArchived &&
-                                            skill.IsActive &&
-                                            !skill.IsDeleted))
+                                                !skill.IsArchived &&
+                                                skill.IsActive &&
+                                                !skill.IsDeleted))
 
                 return await Result.FailureAsync<CreateSkillsResponseDTO>("Skill is already exist. ");
 
@@ -63,6 +63,21 @@ namespace JobApplication.Application.Features.Skills.Handlers
                 Name = request.requestDTO.Name,
                 Description = request.requestDTO.Description
             });
+        }
+    }
+
+    public class UpdateSkillsCommandValidator : AbstractValidator<UpdateSkillsCommand>
+    {
+        public UpdateSkillsCommandValidator()
+        {
+            RuleFor(x => x.Id).NotEmpty().WithMessage("Skill Id is required.");
+            RuleFor(x => x.requestDTO.Name)
+                .NotEmpty().WithMessage("Skill name is required.")
+                .MaximumLength(100);
+            RuleFor(x => x.requestDTO.Description)
+                .MaximumLength(500);
+            RuleFor(x => x.requestDTO.SkillCategoryId)
+                .NotEmpty().WithMessage("Skill Category Id is required.");
         }
     }
 }

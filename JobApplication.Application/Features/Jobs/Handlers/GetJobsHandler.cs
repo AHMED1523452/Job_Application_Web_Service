@@ -6,7 +6,9 @@ using JobApplication.Application.Patterns;
 using JobApplication.Domain.Enums;
 using MediatR;
 using NetTopologySuite.Geometries;
+using System.Linq.Expressions;
 
+using HrProfileEntity = JobApplication.Domain.Entities.HrProfile;
 using JobEntity = JobApplication.Domain.Entities.Jobs;
 namespace JobApplication.Application.Features.Jobs.Handlers;
 
@@ -16,81 +18,87 @@ public sealed class GetJobsHandler : IRequestHandler<GetJobsQuery, PaginatedResu
     private readonly ICurrentUserService _currentUser;
     private readonly IMapper _mapper;
     private readonly IApplicationCache _cache;
-    public GetJobsHandler(IUnitOfWork unitOfWork,
-                          ICurrentUserService currentUser,
-                          IMapper mapper,
-                          IApplicationCache cache)
-    { 
-        _unitOfWork = unitOfWork; 
+
+    public GetJobsHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser, IMapper mapper, IApplicationCache cache)
+    {
+        _unitOfWork = unitOfWork;
         _currentUser = currentUser;
-        _mapper = mapper; 
+        _mapper = mapper;
         _cache = cache;
     }
 
     public async Task<PaginatedResult<JobListItemsResponseDTO>> Handle(GetJobsQuery request, CancellationToken ct)
     {
-        var f = request.Request; var now = DateTime.UtcNow;
+        var f = request.Request;
+        var now = DateTime.UtcNow;
         var keyword = string.IsNullOrWhiteSpace(f.Keyword) ? null : f.Keyword.Trim();
         var userKey = _currentUser.GetCurrentUserIdOrNull()?.ToString() ?? "anonymous";
         var skillKey = f.SkillIds is null ? string.Empty : string.Join(',', f.SkillIds.OrderBy(id => id));
-        var cacheKey = $"job:all:user:{userKey}:page:{request.Page}:pageSize:{request.PageSize}:keyword:{Uri.EscapeDataString(keyword ?? string.Empty)}:category:{f.JobCategoryId}:employment:{f.EmploymentType}:location:{Uri.EscapeDataString(f.Location?.Trim().ToLowerInvariant() ?? string.Empty)}:skills:{skillKey}:lat:{f.Latitude}:lon:{f.Longitude}:radius:{f.RadiusKm}:sort:{f.SortBy}";
+
+        var cacheKey = $"job:all:user:{userKey}:page:{request.Page}:pageSize:{request.PageSize}" +
+                       $" :keyword:{Uri.EscapeDataString(keyword ?? string.Empty)}:category:{f.JobCategoryId}" +
+                       $":employment:{f.EmploymentType}:location:{Uri.EscapeDataString(f.Location?.Trim().ToLowerInvariant() ?? string.Empty)}" +
+                       $":skills:{skillKey}:lat:{f.Latitude}:lon:{f.Longitude}:radius:{f.RadiusKm}:sort:{f.SortBy}";
+
         var cached = await _cache.GetAsync<PaginatedResult<JobListItemsResponseDTO>>(cacheKey, ct);
-        if (cached is not null) return cached;
-        //. Validating if the point is existing or not if not we will create another point 
+        if (cached is not null)
+            return cached;
+
         var searchPoint = f.Latitude.HasValue && f.Longitude.HasValue
             ? new Point(f.Longitude.Value, f.Latitude.Value) { SRID = 4326 }
             : null;
-
         var radiusMeters = f.RadiusKm.GetValueOrDefault() * 1000;
 
-        //. Predicate for the filteration of the Generic Repository  
-        var predicate = (System.Linq.Expressions.Expression<Func<JobEntity, bool>>)(job =>
-            !job.IsDeleted && !job.IsArchived && job.jobStatus == JobStatus.Published
+        var userId = _currentUser.GetCurrentUserIdOrNull();
+        
+        // Get recruiter first if user is authenticated
+        Guid? recruiterId = null;
+        if (userId.HasValue)
+        {
+            var recruiter = await _unitOfWork.Repository<HrProfileEntity>().GetByIdAsyncWithTracking(x => x.UserId == userId.Value  && 
+                                                                                                    x.IsActive && 
+                                                                                                    !x.IsDeleted &&
+                                                                                                    !x.IsArchived, ct);
+            if (recruiter != null)
+                recruiterId = recruiter.Id; //. to be assigned must be bringing the item with tracking to do any process
+        }
+
+        //. predicate filteration and search 
+        Expression<Func<JobEntity, bool>> predicate = job =>
+            !job.IsDeleted &&
+            !job.IsArchived &&
+             job.jobStatus == JobStatus.Published
             && (!job.ApplicationDeadlineUtc.HasValue || job.ApplicationDeadlineUtc > now)
             && (!f.JobCategoryId.HasValue || job.JobCategoryId == f.JobCategoryId.Value)
             && (!f.EmploymentType.HasValue || job.employmentType == f.EmploymentType.Value)
             && (keyword == null || job.Title.Contains(keyword) || (job.Description != null && job.Description.Contains(keyword)))
             && (string.IsNullOrWhiteSpace(f.Location) || job.Location.Contains(f.Location) || (job.Address != null && job.Address.Contains(f.Location)))
             && (f.SkillIds == null || f.SkillIds.Count == 0 || job.JobRequirements.Any(r => r.SkillId.HasValue && f.SkillIds.Contains(r.SkillId.Value)))
-            && (searchPoint == null || (job.LocationPoint != null && job.LocationPoint.Distance(searchPoint) <= radiusMeters)));
+            && (searchPoint == null || (job.LocationPoint != null && job.LocationPoint.Distance(searchPoint) <= radiusMeters))
+            && (!userId.HasValue || recruiterId.HasValue && job.HrProfileId == recruiterId.Value);
 
-        IEnumerable<JobEntity> entities;
-        int total;
-        if (f.SortBy == "relevance" && keyword is not null)
-        {
-            var matchingJobs = await _unitOfWork.Repository<JobEntity>().GetAllAsync<JobEntity>(predicate,
-                null, ct, x => x.HrProfile, x => x.JobCategory, x => x.JobRequirements);
+        var (jobs, total) = await _unitOfWork.Repository<JobEntity>().GetPagedAsync<JobEntity>(
+            request.Page,
+            request.PageSize,
+            predicate,
+            x => x,
+            nameof(JobEntity.CreatedAt),
+            true,
+            null,   // searchTerm
+            ct);    // cancellationToken
 
-            var ranked = matchingJobs.OrderByDescending(job => string.Equals(job.Title, keyword, StringComparison.OrdinalIgnoreCase))
-                .ThenByDescending(job => job.Title.StartsWith(keyword, StringComparison.OrdinalIgnoreCase))
-                .ThenByDescending(job => job.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase))
-                .ThenByDescending(job => job.CreatedAt).ToList();
-            total = ranked.Count;
-            entities = ranked.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize).ToList();
-        }
-        else
+        var items = await JobHandlerHelpers.ToListAsync(_unitOfWork, _mapper, jobs, userId, ct);
+
+        var response = new PaginatedResult<JobListItemsResponseDTO>
         {
-            var page = await _unitOfWork.Repository<JobEntity>().GetPagedAsync<JobEntity>(request.Page, request.PageSize,
-                predicate, x => x, nameof(JobEntity.CreatedAt), true, null, ct,
-                x => x.HrProfile, x => x.JobCategory, x => x.JobRequirements);
-            entities = page.Items;
-            total = page.TotalCount;
-        }
-        var items = await JobHandlerHelpers.ToListAsync(_unitOfWork, _mapper, entities, _currentUser.GetCurrentUserIdOrNull(), ct);
-        if (searchPoint is not null)
-        {
-            foreach (var (item, entity) in items.Zip(entities))
-                item.DistanceKm = entity.LocationPoint?.Distance(searchPoint) / 1000.0;
-        }
-        var response = new PaginatedResult<JobListItemsResponseDTO> { 
             Items = items,
-            Pagination = new PaginationMetadata 
+            Pagination = new PaginationMetadata
             {
                 Page = request.Page,
                 PageSize = request.PageSize,
                 TotalCount = total,
-                TotalPages = (int)Math.Ceiling(total / (double)request.PageSize) 
-            } 
+                TotalPages = (int)Math.Ceiling(total / (double)request.PageSize)
+            }
         };
         await _cache.CreateAsync(cacheKey, response, ct);
         return response;

@@ -1,4 +1,5 @@
 ﻿using JobApplication.Application.Interfaces;
+using JobApplication.Application.Services;
 using JobApplication.Infrastructure.Persistence;
 using JobApplication.Infrastructure.Security;
 using JobApplication.Infrastructure.Services;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NetTopologySuite.Geometries;
 using JobApplication.Infrastructure.Settings;
 using JobApplication.Infrastructure.Identity;
@@ -24,8 +26,8 @@ namespace JobApplication.Infrastructure
         {
             //. had been added for the location point property 
             services.AddDbContext<AppDbContext>(options =>
-                            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"), sql => sql.UseNetTopologySuite())
-                            );
+                            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
+                             sql => sql.UseNetTopologySuite()));
 
             services.AddHangfire(register =>
                             register.UseSqlServerStorage(configuration.GetConnectionString("HangfireConnection")));
@@ -87,6 +89,9 @@ namespace JobApplication.Infrastructure
             services.AddScoped<IEmailNotificationDeliveryJob>(provider =>
                 provider.GetRequiredService<EmailNotificationDeliveryJob>());
 
+            //. Background job that extracts the text of an uploaded candidate CV
+            services.AddScoped<ICvExtractionJob, CvExtractionJob>();
+
             // Configure FluentEmail to deliver messages through the configured SMTP server.
             var smtp = configuration.GetSection("SMTP");
             var smtpHost = smtp["Host"];
@@ -133,6 +138,20 @@ namespace JobApplication.Infrastructure
 
             services.AddTransient<IValidatorService, ValidatorService>();
             services.AddScoped<IFileStorageService, SupabaseStorageService>();
+            services.AddScoped<IExtractorService, ExtractorService>();
+            services.AddScoped<IFileHashService, FileHashService>();
+            services.AddScoped<IUserService, UserService>();
+
+            //. Bind OCR settings and register IOcrService abstraction with ExtractWithOCR implementation
+            services.Configure<OcrSettings>(configuration.GetSection("Ocr"));
+            services.AddScoped<IOcrService>(sp =>
+            {
+                var ocrSettings = sp.GetRequiredService<IOptions<OcrSettings>>().Value;
+                var tessDataPath = string.IsNullOrWhiteSpace(ocrSettings.TessDataPath)
+                    ? "tessdata"
+                    : ocrSettings.TessDataPath;
+                return new ExtractWithOCR(tessDataPath, ocrSettings.DefaultLanguage);
+            });
 
             //. Configuration for the Supabase Storage Settings 
             services.Configure<SupabaseStorageServiceOptions>

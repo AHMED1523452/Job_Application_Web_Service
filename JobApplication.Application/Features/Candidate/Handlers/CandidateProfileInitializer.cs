@@ -15,7 +15,7 @@ internal static class CandidateProfileInitializer
     /// <param name="actor"></param>
     public static void InitializeChildren(CandidateProfile candidate, string actor)
     {
-        
+        //. don't forget that there are many mapping and many adding records in many tables not candidate prfoile table only
         foreach (var skill in candidate.Skills)
         {
             skill.Id = $"{candidate.Id:N}:{skill.SkillId:N}";

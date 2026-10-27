@@ -1,4 +1,5 @@
 using AutoMapper;
+using FluentValidation;
 using JobApplication.Application.Features.Candidate.DTOs;
 using JobApplication.Application.Features.Candidate.Queries;
 using JobApplication.Application.Interfaces;

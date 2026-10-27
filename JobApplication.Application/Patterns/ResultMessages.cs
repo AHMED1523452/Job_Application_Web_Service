@@ -1,5 +1,6 @@
 namespace JobApplication.Application.Patterns;
 
+//. if we wanted to make the messages unique 
 public static class ResultMessages
 {
     public const string AuthenticationRequired = "Authentication is required.";

@@ -19,9 +19,15 @@ internal sealed class JobDetailsQueryProjection
         {
             Id = job.Id,
             Title = job.Title,
-            CompanyName = job.HrProfile.CompanyName,
-            CompanyLogoUrl = job.HrProfile.CompanyLogo,
-            CategoryName = job.JobCategory.Name,
+            hrResponse = new HrProfielJobDetailsResponseDTO
+            {
+                CompanyName = job.HrProfile.CompanyName,
+                CompanyLogoURL = job.HrProfile.CompanyLogoPath
+            },
+            categoryResponse = new JobCategoryResponseDTO
+            {
+                CategoryName = job.JobCategory.Name
+            },
             EmploymentType = job.employmentType,
             JobStatus = job.jobStatus,
             Address = job.Address,

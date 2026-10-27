@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.Notifications.Commands;
 using JobApplication.Application.Interfaces;
 using JobApplication.Application.Patterns;
@@ -45,4 +46,9 @@ public sealed class DeleteNotificationHandler : IRequestHandler<DeleteNotificati
 
         return await Result.SuccessAsync(notification.Id, ResultMessages.NotificationDeleted);
     }
+}
+
+public class DeleteNotificationCommandValidator : AbstractValidator<DeleteNotificationCommand>
+{
+    public DeleteNotificationCommandValidator() => RuleFor(command => command.NotificationId).GreaterThan(0);
 }

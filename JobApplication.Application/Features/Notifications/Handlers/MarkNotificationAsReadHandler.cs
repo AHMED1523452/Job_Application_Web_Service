@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.Notifications.Commands;
 using JobApplication.Application.Interfaces;
 using JobApplication.Application.Patterns;
@@ -46,4 +47,9 @@ public sealed class MarkNotificationAsReadHandler : IRequestHandler<MarkNotifica
 
         return await Result.SuccessAsync(notification.Id, ResultMessages.NotificationMarkedRead);
     }
+}
+
+public class MarkNotificationAsReadCommandValidator : AbstractValidator<MarkNotificationAsReadCommand>
+{
+    public MarkNotificationAsReadCommandValidator() => RuleFor(command => command.NotificationId).GreaterThan(0);
 }

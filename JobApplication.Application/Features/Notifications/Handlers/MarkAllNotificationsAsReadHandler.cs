@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.Notifications.Commands;
 using JobApplication.Application.Interfaces;
 using JobApplication.Application.Patterns;
@@ -28,8 +29,6 @@ public sealed class MarkAllNotificationsAsReadHandler
         var now = DateTime.UtcNow;
         var updatedBy = userId.Value.ToString();
 
-        //. Avoiding the for loop and updating the records one by one and there is loading in memory 
-        
         var count = await repository.ExecuteUpdateAsync(
             notification =>
              notification.UserId == userId.Value

@@ -1,4 +1,5 @@
 using AutoMapper;
+using FluentValidation;
 using JobApplication.Application.Features.Candidate.Commands;
 using JobApplication.Application.Features.Candidate.DTOs;
 using JobApplication.Application.Interfaces;
@@ -48,7 +49,6 @@ public sealed class UpdateCandidateHandler : IRequestHandler<UpdateCandidateComm
         if (!CandidateProfileCollectionUpdater.RequestReferencesOwnedChildren(candidate, command.Request))
             return await Result.FailureAsync<CandidateResponseDTO>("A supplied experience, education, or certification ID does not belong to this profile.");
 
-        //. update not create 
         _mapper.Map(command.Request, candidate);
         candidate.UpdatedAt = DateTime.UtcNow;
         candidate.UpdatedBy = userId.Value.ToString();

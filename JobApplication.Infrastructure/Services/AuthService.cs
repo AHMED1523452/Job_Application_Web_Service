@@ -81,7 +81,7 @@ namespace JobApplication.Infrastructure.Services
         public Task<GenericResult<RegisterResponseDTO>> RegisterAdminAsync(
             RegisterRequestDTO request,
             CancellationToken cancellationToken)
-            => RegisterUserAsync(request, "Admin", null, cancellationToken);
+            =>  RegisterUserAsync(request, "Admin", null, cancellationToken);
 
         private async Task<GenericResult<RegisterResponseDTO>> RegisterUserAsync(
             RegisterRequestDTO request,

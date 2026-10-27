@@ -1,43 +1,62 @@
+using FluentValidation;
 using JobApplication.Application.Features.Jobs.Commands;
 using JobApplication.Application.Interfaces;
 using JobApplication.Application.Patterns;
 using JobApplication.Domain.Entities;
-using JobApplication.Domain.Enums;
 using MediatR;
 using JobEntity = JobApplication.Domain.Entities.Jobs;
+
 namespace JobApplication.Application.Features.Jobs.Handlers;
+
 public sealed class RecordJobViewHandler : IRequestHandler<RecordJobViewCommand, GenericResult<int>>
 {
-    private readonly IUnitOfWork _uow;
-    private readonly ICurrentUserService _user;
-    private readonly IApplicationCache _cache;
-    public RecordJobViewHandler(IUnitOfWork uow,
-                                ICurrentUserService user,
-                                IApplicationCache cache)
-    {
-        _uow=uow;
-        _user=user;
-        _cache=cache;
-    }
-    public async Task<GenericResult<int>> Handle(RecordJobViewCommand request,CancellationToken ct)
-    {
-        var job=await _uow.Repository<JobEntity>()
-            .GetByIdAsync(x => x.Id == request.Id&&x.jobStatus==JobStatus.Published && !x.IsDeleted && !x.IsArchived
-            &&(!x.ApplicationDeadlineUtc.HasValue || x.ApplicationDeadlineUtc > DateTime.UtcNow),ct);
-        if(job is null)
-            return await Result.FailureAsync<int>("Job not found or is no longer accepting applications.");
-        var userId=_user.GetCurrentUserIdOrNull();
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUser;
 
-        //. is the user is authenticated or is the current user is HR or not 
-        if(!userId.HasValue||!await _uow.Repository<HrProfile>().AnyAsync(x => x.Id == job.HrProfileId && x.UserId == userId.Value,ct))
+    public RecordJobViewHandler(IUnitOfWork unitOfWork, ICurrentUserService currentUser)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
+    }
+
+    public async Task<GenericResult<int>> Handle(RecordJobViewCommand command, CancellationToken ct)
+    {
+        var userId = _currentUser.GetCurrentUserIdOrNull();
+        if (!userId.HasValue)
+            return await Result.FailureAsync<int>("Authentication is required.");
+
+        var job = await _unitOfWork.Repository<JobEntity>().GetByIdAsNoTrackingAsync<JobEntity>(
+            j => j.Id == command.Id && !j.IsDeleted && !j.IsArchived,
+            null, ct);
+
+        if (job is null)
+            return await Result.FailureAsync<int>("Job not found.");
+
+        var existingView = await _unitOfWork.Repository<JobView>().GetByIdAsNoTrackingAsync<JobView>(
+            v => v.JobId == command.Id,
+            null, ct);
+
+        if (existingView is not null)
+            return await Result.SuccessAsync(1, "Job view already recorded.");
+
+        var jobView = new JobView
         {
-            await _uow.Repository<JobView>().AddAsync(new JobView{Id=Guid.NewGuid(),JobId=job.Id,UserId=userId,ViewedAt=DateTime.UtcNow,IpAddress=_user.UserIP(),UserAgent=_user.UserAgent()},ct);
-            await _uow.SaveChangesAsync(ct);
-            await _cache.InvalidateAsync($"job:by-id:{job.Id}:", ct);
-        }
-        var count=(
-            await _uow.Repository<JobView>().GetAllAsync<JobView>(x=>x.JobId==job.Id,cancellationToken:ct)
-            ).Count();
-        return await Result.SuccessAsync(count,"Job view recorded.");
+            Id = Guid.NewGuid(),
+            JobId = command.Id,
+            ViewedAt = DateTime.UtcNow
+        };
+
+        await _unitOfWork.Repository<JobView>().AddAsync(jobView, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+
+        return await Result.SuccessAsync(1, "Job view recorded.");
+    }
+}
+
+public class RecordJobViewCommandValidator : AbstractValidator<RecordJobViewCommand>
+{
+    public RecordJobViewCommandValidator()
+    {
+        RuleFor(x => x.Id).NotEmpty();
     }
 }

@@ -26,6 +26,7 @@ namespace JobApplication.Infrastructure.Persistence
         public DbSet<RequirementMatch> RequirementMatches { get; set; }
         public DbSet<AtsAnalysis> AtsAnalyses { get; set; }
         public DbSet<CandidateCVs> CandidateCVs { get; set; }
+        public DbSet<CandidateCvExtraction> CandidateCvExtractions { get; set; }
         public DbSet<CandidateSkill> CandidateSkills { get; set; }
         public DbSet<ChatParticipant> ChatParticipants { get; set; }
         public DbSet<IdempotencyRecord> records { get; set; }
@@ -81,6 +82,7 @@ namespace JobApplication.Infrastructure.Persistence
             // Seed SkillCategory lookup data
             try
             {
+                //. not best practice but not like a gap 
                 modelBuilder.Entity<SkillCategory>().HasData(
                     new SkillCategory { Id = 1, Name = "Programming Languages", Description = "Languages used to write software (e.g., C#, Java, Python)", IsActive = true },
                     new SkillCategory { Id = 2, Name = "Backend Development", Description = "Server-side development, APIs, and business logic", IsActive = true },
@@ -108,6 +110,19 @@ namespace JobApplication.Infrastructure.Persistence
                 .WithOne()
                 .HasForeignKey<CandidateProfile>(c => c.UserId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            //. 1-1 between the uploaded CV and its background extraction record;
+            //. the unique index guarantees one extraction per CV.
+            modelBuilder.Entity<CandidateCvExtraction>()
+                .HasOne(extraction => extraction.CandidateCv)
+                .WithOne(cv => cv.Extraction)
+                .HasForeignKey<CandidateCvExtraction>(extraction => extraction.CandidateCvId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //. creating an index to make the read processes more easier
+            modelBuilder.Entity<CandidateCvExtraction>()
+                .HasIndex(extraction => extraction.CandidateCvId)
+                .IsUnique();
 
 
             modelBuilder.Entity<Jobs>()

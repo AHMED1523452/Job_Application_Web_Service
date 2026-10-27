@@ -16,6 +16,10 @@ namespace JobApplication.Domain.Entities{
 
         public decimal FinalScore { get; set; }
 
+        /// <summary>
+        /// default value --> pending 
+        /// after Analysis --> Recommended or not recommended
+        /// </summary>
         public AtsDescision Decision { get; set; }
 
         public int TotalRequirementsCount { get; set; }

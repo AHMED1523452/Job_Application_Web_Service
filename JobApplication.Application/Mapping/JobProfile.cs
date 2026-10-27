@@ -10,9 +10,9 @@ namespace JobApplication.Application.Mapping
         public JobProfile()
         {
             CreateMap<Jobs, JobListItemsResponseDTO>()
-                .ForMember(dest => dest.CompanyName, opt => opt.MapFrom(src => src.HrProfile.CompanyName))
-                .ForMember(dest => dest.CompanyLogoUrl, opt => opt.MapFrom(src => src.HrProfile.CompanyLogo))
-                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.JobCategory.Name))
+                .ForMember(dest => dest.hrResponse.CompanyName, opt => opt.MapFrom(src => src.HrProfile.CompanyName))
+                .ForMember(dest => dest.hrResponse.CompanyLogoURL, opt => opt.MapFrom(src => src.HrProfile.CompanyLogoPath))
+                .ForMember(dest => dest.categoryResponse.CategoryName, opt => opt.MapFrom(src => src.JobCategory.Name))
                 .ForMember(dest => dest.EmploymentType, opt => opt.MapFrom(src => src.employmentType))
                 .ForMember(dest => dest.JobStatus, opt => opt.MapFrom(src => src.jobStatus))
                 .ForMember(dest => dest.IsAcceptingApplications, opt => opt.MapFrom(src =>

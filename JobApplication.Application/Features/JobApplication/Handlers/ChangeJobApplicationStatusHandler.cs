@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.JobApplication.Commands;
 using JobApplication.Application.Features.JobApplication.DTOs;
 using JobApplication.Application.Interfaces;
@@ -7,6 +8,7 @@ using JobApplication.Domain.Entities;
 using JobApplication.Domain.Enums;
 using MediatR;
 using JobEntity = JobApplication.Domain.Entities.Jobs;
+using HrProfileEntity = JobApplication.Domain.Entities.HrProfile;
 
 namespace JobApplication.Application.Features.JobApplication.Handlers;
 
@@ -54,7 +56,7 @@ public sealed class ChangeJobApplicationStatusHandler
         if (job is null)
             return await Result.FailureAsync<CloseJobApplicationResponseDTO>("The related job was not found.");
 
-        var recruiter = await _unitOfWork.Repository<HrProfile>().GetByIdAsync(
+        var recruiter = await _unitOfWork.Repository<HrProfileEntity>().GetByIdAsync(
             profile => profile.Id == job.HrProfileId
                 && profile.UserId == userId.Value
                 && !profile.IsDeleted
@@ -119,4 +121,29 @@ public sealed class ChangeJobApplicationStatusHandler
             or JobApplicationStatus.Rejected,
         _ => false
     };
+}
+
+public class ChangeJobApplicationStatusValidator : AbstractValidator<ChangeJobApplicationStatusCommand>
+{
+    private static readonly JobApplicationStatus[] RecruiterStatuses =
+    [
+        JobApplicationStatus.UnderReview,
+        JobApplicationStatus.InterviewScheduled,
+        JobApplicationStatus.Accepted,
+        JobApplicationStatus.Rejected
+    ];
+
+    public ChangeJobApplicationStatusValidator()
+    {
+        RuleFor(command => command.ApplicationId).NotEmpty();
+        RuleFor(command => command.Request).NotNull();
+        RuleFor(command => command.Request.Status)
+            .Must(status => RecruiterStatuses.Contains(status))
+            .WithMessage("Recruiters can set status to UnderReview, InterviewScheduled, Accepted, or Rejected.")
+            .When(command => command.Request is not null);
+        RuleFor(command => command.Request.RejectionReason)
+            .MaximumLength(1000)
+            .When(command => command.Request is not null
+                && command.Request.Status == JobApplicationStatus.Rejected);
+    }
 }

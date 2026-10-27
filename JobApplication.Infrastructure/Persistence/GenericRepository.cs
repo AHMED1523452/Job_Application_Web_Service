@@ -44,7 +44,7 @@ namespace JobApplication.Infrastructure.Persistence
         public async Task<TResult> GetByIdAsyncWithTracking<TResult>(Expression<Func<TEntity, bool>> predicate, 
                                                             Expression<Func<TEntity, TResult>> selector,
                                                             CancellationToken cancellationToken = default,
-                                                            params Expression<Func<TEntity, object?>>[]? includes) where TResult: class
+                                                            params Expression<Func<TEntity, object?>>[]? includes) 
         {
             IQueryable<TEntity> query = dbContext.Set<TEntity>(); 
             if(includes != null && includes.Length > 0)
@@ -54,7 +54,7 @@ namespace JobApplication.Infrastructure.Persistence
                     query = query.Include(include);
                 }
             }
-            return await query.Where(predicate).Select(selector).LastOrDefaultAsync();
+            return await query.Where(predicate).Select(selector).FirstOrDefaultAsync();
         }
 
         //. Focus on it (With bringing the model or DTO without tracking)
@@ -116,14 +116,16 @@ namespace JobApplication.Infrastructure.Persistence
                                                          Expression<Func<TEntity, bool>>? predicate = null,
                                                          Expression<Func<TEntity, TResult>>? selector = null,
                                                          CancellationToken cancellationToken = default,
-                                                         params Expression<Func<TEntity, object?>>[]? includes) where TResult : class
+                                                         params Expression<Func<TEntity, object?>>[]? includes)
         {
             IQueryable<TEntity> query = dbContext.Set<TEntity>();
             if (includes != null && includes.Length > 0)
             {
                 foreach (var include in includes)
                 {
-                    query = query.Include(include);
+                    //. spliting or separating each query in SQL
+                    //.not meaning that imporve the execution time but for don't make many joins operations
+                    query = query.Include(include).AsSplitQuery();
                 }
             }
             
@@ -141,7 +143,8 @@ namespace JobApplication.Infrastructure.Persistence
                     return (IEnumerable<TResult>)(object)all;
                 }
 
-                throw new ArgumentNullException(nameof(selector), "Selector must be provided for projection when TResult differs from TEntity.");
+                throw new ArgumentNullException(nameof(selector),
+                            "Selector must be provided for projection when TResult differs from TEntity.");
             }
 
             if (predicate != null)
@@ -170,7 +173,7 @@ namespace JobApplication.Infrastructure.Persistence
             {
                 foreach (var include in includes)
                 {
-                    query = query.Include(include);
+                    query = query.Include(include).AsSplitQuery();
                 }
             }
 
@@ -222,11 +225,13 @@ namespace JobApplication.Infrastructure.Persistence
                 }
             }
 
+            //. if greater than 0 take it and deal with 
             if (pageSize > 0)
             {
                 query = query.Skip((page - 1) * pageSize).Take(pageSize);
             }
 
+            //. if not ignore it 
             var projected = query.AsNoTracking().Select(selector);
             var items = await projected.ToListAsync(cancellationToken);
             return (items, totalCount);
@@ -234,9 +239,7 @@ namespace JobApplication.Infrastructure.Persistence
 
         public async Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate ,
                                           CancellationToken cancellationToken = default)
-        {
-            return await dbContext.Set<TEntity>().AnyAsync(predicate, cancellationToken);
-        }
+            => await dbContext.Set<TEntity>().AsNoTracking().AsQueryable().AnyAsync(predicate, cancellationToken);
 
         public async Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null,
                                           CancellationToken cancellationToken = default)

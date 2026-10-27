@@ -17,6 +17,11 @@ namespace JobApplication.Application.Interfaces
                                             CancellationToken cancellationToken = default,
                                             params Expression<Func<TEntity, object?>>[]? includes
                                             );
+        Task<TResult> GetByIdAsyncWithTracking<TResult>(Expression<Func<TEntity, bool>> predicate,
+                                                            Expression<Func<TEntity, TResult>> selector,
+                                                            CancellationToken cancellationToken = default,
+                                                            params Expression<Func<TEntity, object?>>[]? includes);
+
         Task<TResult> GetByIdAsNoTrackingAsync<TResult>(Expression<Func<TEntity, bool>> predicate,
                                                       Expression<Func<TEntity, TResult>>? selector = default, 
                                                       CancellationToken cancellationToken = default,
@@ -26,11 +31,11 @@ namespace JobApplication.Application.Interfaces
                                                 CancellationToken cancellationToken = default,
                                                 Expression<Func<TEntity, object?>>[]? includes  = null);
 
-         Task<IEnumerable<TResult>> GetAllAsync<TResult>(
-                                             Expression<Func<TEntity, bool>>? predicate = null,
-                                             Expression<Func<TEntity, TResult>>? selector = null,
-                                             CancellationToken cancellationToken = default,
-                                             params Expression<Func<TEntity, object?>>[]? includes) where TResult : class;
+        Task<IEnumerable<TResult>> GetAllAsync<TResult>(
+                                            Expression<Func<TEntity, bool>>? predicate = null,
+                                            Expression<Func<TEntity, TResult>>? selector = null,
+                                            CancellationToken cancellationToken = default,
+                                            params Expression<Func<TEntity, object?>>[]? includes);
 
         // Paging with search and sorting. selector projects entity to TResult.
         Task<(IEnumerable<TResult> Items, int TotalCount)> GetPagedAsync<TResult>(

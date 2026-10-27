@@ -1,4 +1,5 @@
 using AutoMapper;
+using FluentValidation;
 using JobApplication.Application.Features.Jobs.Commands;
 using JobApplication.Application.Features.Jobs.DTOs;
 using JobApplication.Application.Interfaces;
@@ -7,6 +8,7 @@ using JobApplication.Domain.Entities;
 using JobApplication.Domain.Enums;
 using MediatR;
 
+using HrProfileEntity = JobApplication.Domain.Entities.HrProfile;
 using JobEntity = JobApplication.Domain.Entities.Jobs;
 namespace JobApplication.Application.Features.Jobs.Handlers;
 
@@ -20,25 +22,24 @@ public sealed class CreateJobHandler : IRequestHandler<CreateJobCommand, Generic
 
     public CreateJobHandler(IUnitOfWork unitOfWork,
                             ICurrentUserService currentUser,
-                            IMapper mapper, 
+                            IMapper mapper,
                             IBackgroundJobService backgroundJobs,
                             IApplicationCache cache)
-    {   
+    {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _mapper = mapper;
         _backgroundJobs = backgroundJobs;
-        _cache = cache; }
+        _cache = cache;
+    }
 
     public async Task<GenericResult<JobDetailsResponseDTO>> Handle(CreateJobCommand command, CancellationToken ct)
     {
         var userId = _currentUser.GetCurrentUserIdOrNull();
-        //. Another Validating if the user is authenticated or not
         if (!userId.HasValue)
             return await Result.FailureAsync<JobDetailsResponseDTO>("Authentication is required.");
 
-        //. Another Validating if the user is authenticated and Hr role or not 
-        var recruiter = await _unitOfWork.Repository<HrProfile>().GetByIdAsync(x => x.UserId == userId.Value, ct);
+        var recruiter = await _unitOfWork.Repository<HrProfileEntity>().GetByIdAsync(x => x.UserId == userId.Value, ct);
         if (recruiter is null) return await Result.FailureAsync<JobDetailsResponseDTO>("Create a recruiter profile before posting a job.");
 
         var category = await _unitOfWork.Repository<JobCategory>().GetByIdAsync(
@@ -65,16 +66,22 @@ public sealed class CreateJobHandler : IRequestHandler<CreateJobCommand, Generic
         await _unitOfWork.Repository<JobEntity>().AddAsync(job, ct);
         await _unitOfWork.SaveChangesAsync(ct);
         await _cache.InvalidateAsync("job:", ct);
-        await ScheduleDeadlineCloseAsync(job);
+        await ScheduleDeadlineCloseAsync(job, ct);
         return await Result.SuccessAsync(await JobHandlerHelpers.ToDetailsAsync(_unitOfWork, _mapper, job, userId, ct), "Job created successfully.");
     }
 
-    //. Schedule a background job to close the job if the application deadline has passed
-    private Task ScheduleDeadlineCloseAsync(JobEntity job)
+    private Task ScheduleDeadlineCloseAsync(JobEntity job, CancellationToken ct)
     {
-        //. Validating if the job is published and has an application deadline
-        if (job.jobStatus != JobStatus.Published || !job.ApplicationDeadlineUtc.HasValue) return Task.CompletedTask; //. not best practice to return null, so we return a completed task instead
+        if (job.jobStatus != JobStatus.Published || !job.ApplicationDeadlineUtc.HasValue) return Task.CompletedTask;
         var delay = job.ApplicationDeadlineUtc.Value - DateTime.UtcNow;
-        return _backgroundJobs.Schedule<IJobDeadlineService>(service => service.CloseIfExpiredAsync(job.Id), delay > TimeSpan.Zero ? delay : TimeSpan.Zero);
+        return _backgroundJobs.Schedule<IJobDeadlineService>(service => service.CloseIfExpiredAsync(job.Id, ct), delay > TimeSpan.Zero ? delay : TimeSpan.Zero);
+    }
+}
+
+public class CreateJobCommandValidator : AbstractValidator<CreateJobCommand>
+{
+    public CreateJobCommandValidator(IUnitOfWork unitOfWork)
+    {
+        RuleFor(x => x.Request).NotNull();
     }
 }

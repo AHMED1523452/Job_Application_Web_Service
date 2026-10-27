@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.Chat.Commands;
 using JobApplication.Application.Features.Chat.DTOs;
 using JobApplication.Application.Interfaces;
@@ -27,7 +28,7 @@ public sealed class CreateChatHandler : IRequestHandler<CreateChatCommand, Gener
             return await Result.FailureAsync<CreateChatResponseDTO>("Authentication is required.");
 
         var application = await _unitOfWork.Repository<JobApplications>().GetByIdAsNoTrackingAsync(
-            application => application.Id == request.Request.JobApplicationId
+            application => application.Id == request.requestDTO.JobApplicationId
                 && application.IsActive && !application.IsDeleted && !application.IsArchived,
            selector: application => new ApplicationChatContext
            {
@@ -49,7 +50,7 @@ public sealed class CreateChatHandler : IRequestHandler<CreateChatCommand, Gener
 
         var chatRepository = _unitOfWork.Repository<ChatEntity>();
         var existingChat = await chatRepository.GetByIdAsNoTrackingAsync(
-            chat => chat.JobApplicationId == request.Request.JobApplicationId,
+            chat => chat.JobApplicationId == request.requestDTO.JobApplicationId,
             chat => new CreateChatResponseDTO
             {
                 Id = chat.Id,
@@ -71,7 +72,7 @@ public sealed class CreateChatHandler : IRequestHandler<CreateChatCommand, Gener
             Id = Guid.NewGuid(),
             CandidateProfileId = application.CandidateProfileId,
             HrProfileId = application.HrProfileId,
-            JobApplicationId = request.Request.JobApplicationId,
+            JobApplicationId = request.requestDTO.JobApplicationId,
             CreatedAt = now,
             Participants = new List<ChatParticipant>
             {
@@ -94,5 +95,9 @@ public sealed class CreateChatHandler : IRequestHandler<CreateChatCommand, Gener
             CreatedAt = newChat.CreatedAt
         }, "Chat created.");
     }
+}
 
+public class CreateChatCommandValidator : AbstractValidator<CreateChatCommand>
+{
+    public CreateChatCommandValidator() => RuleFor(request => request.requestDTO.JobApplicationId).NotEmpty();
 }

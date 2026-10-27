@@ -4,5 +4,8 @@ using MediatR;
 
 namespace JobApplication.Application.Features.Candidate.Commands
 {
-    public sealed record CreateCandidateCommand(CandidateRequestDTO Request) : IRequest<GenericResult<CandidateResponseDTO>>;
+    public sealed record CreateCandidateCommand(
+        CreateCandidateRequestDTO Request,
+        CandidateProfileImageUploadDTO? ProfileImage = null)
+        : IRequest<GenericResult<CandidateResponseDTO>>;
 }

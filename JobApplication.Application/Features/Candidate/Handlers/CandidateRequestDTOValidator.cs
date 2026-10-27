@@ -5,9 +5,9 @@ using JobApplication.Domain.Entities;
 
 namespace JobApplication.Application.Features.Candidate.Handlers;
 
-public sealed class CandidateRequestDTOValidator : AbstractValidator<CandidateRequestDTO>
+public sealed class UpdateCandidateRequestDTOValidator : AbstractValidator<UpdateCandidateRequestDTO>
 {
-    public CandidateRequestDTOValidator(IUnitOfWork unitOfWork)
+    public UpdateCandidateRequestDTOValidator(IUnitOfWork unitOfWork)
     {
         RuleFor(x => x.Title).NotEmpty().MaximumLength(150);
         RuleFor(x => x.Description).MaximumLength(5000);
@@ -93,10 +93,14 @@ public sealed class CandidateRequestDTOValidator : AbstractValidator<CandidateRe
         {
             RuleFor(x => x.Preference!.MinimumMatchScore).InclusiveBetween(0, 100)
                 .When(x => x.Preference!.MinimumMatchScore.HasValue);
-            RuleFor(x => x.Preference!.PreferredLocation).MaximumLength(250);
-            RuleFor(x => x.Preference!.MinimumYearsOfExperience).GreaterThanOrEqualTo(0)
+
+            RuleFor(x => x.Preference!.PreferredLocation)
+                        .MaximumLength(250);
+            RuleFor(x => x.Preference!.MinimumYearsOfExperience)
+                         .GreaterThanOrEqualTo(0)
                 .When(x => x.Preference!.MinimumYearsOfExperience.HasValue);
-            RuleFor(x => x.Preference!.MaximumYearsOfExperience).GreaterThanOrEqualTo(0)
+            RuleFor(x => x.Preference!.MaximumYearsOfExperience)
+                          .GreaterThanOrEqualTo(0)
                 .When(x => x.Preference!.MaximumYearsOfExperience.HasValue);
             RuleFor(x => x.Preference).Must(p => !p!.MinimumYearsOfExperience.HasValue || !p.MaximumYearsOfExperience.HasValue
                 || p.MinimumYearsOfExperience <= p.MaximumYearsOfExperience)

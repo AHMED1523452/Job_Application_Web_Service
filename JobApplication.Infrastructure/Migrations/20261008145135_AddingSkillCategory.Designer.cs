@@ -809,7 +809,7 @@ namespace JobApplication.Infrastructure.Migrations
                     b.Property<string>("CompanyLocation")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("CompanyLogo")
+                    b.Property<string>("CompanyLogoPath")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("CompanyName")

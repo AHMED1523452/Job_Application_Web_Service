@@ -5,6 +5,7 @@ using JobApplication.Application.Patterns;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ATS_Checker_Job_Application_Web_Service.Controllers
 {
@@ -42,15 +43,17 @@ namespace ATS_Checker_Job_Application_Web_Service.Controllers
         }
 
         [Authorize(Roles = "Recruiter")]
+        [Consumes("multipart/form-data")]
         [HttpPost]
         [ProducesResponseType(typeof(GenericResult<JobDetailsResponseDTO>), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<GenericResult<JobDetailsResponseDTO>>> Create(
-            [FromBody] JobRequestDTO request,
+            [FromForm] JobRequestDTO request,
             CancellationToken cancellationToken)
         {
             var result = await _mediator.Send(new CreateJobCommand(request), cancellationToken);
             if (!result.IsSuccess) return BadRequest(result);
+
             return CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result);
         }
 
@@ -151,7 +154,7 @@ namespace ATS_Checker_Job_Application_Web_Service.Controllers
             [FromBody] SavedJobRequestDTO request,
             CancellationToken cancellationToken)
         {
-            var result = await _mediator.Send(new SaveJobCommand(id, request), cancellationToken);
+            var result = await _mediator.Send(new SaveJobCommand(id), cancellationToken);
             if (!result.IsSuccess) return BadRequest(result);
             return Ok(result);
         }

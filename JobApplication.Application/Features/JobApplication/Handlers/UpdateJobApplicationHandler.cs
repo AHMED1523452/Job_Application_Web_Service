@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.JobApplication.Commands;
 using JobApplication.Application.Features.JobApplication.DTOs;
 using JobApplication.Application.Interfaces;
@@ -7,6 +8,7 @@ using JobApplication.Domain.Entities;
 using JobApplication.Domain.Enums;
 using MediatR;
 using JobEntity = JobApplication.Domain.Entities.Jobs;
+using HrProfileEntity = JobApplication.Domain.Entities.HrProfile;
 
 namespace JobApplication.Application.Features.JobApplication.Handlers;
 
@@ -76,7 +78,7 @@ public sealed class UpdateJobApplicationHandler
             cancellationToken);
         var recruiter = job is null
             ? null
-            : await _unitOfWork.Repository<HrProfile>().GetByIdAsync(
+            : await _unitOfWork.Repository<HrProfileEntity>().GetByIdAsync(
                 profile => profile.Id == job.HrProfileId && !profile.IsDeleted && !profile.IsArchived,
                 cancellationToken);
 
@@ -99,5 +101,19 @@ public sealed class UpdateJobApplicationHandler
             JobId = application.JobId,
             Description = application.CoverLetter ?? string.Empty
         }, "Job application updated successfully.");
+    }
+}
+
+public class UpdateJobApplicationValidator : AbstractValidator<UpdateJobApplicationCommand>
+{
+    public UpdateJobApplicationValidator()
+    {
+        RuleFor(x => x.candidateProfileId).NotEmpty();
+        RuleFor(x => x.id).NotEmpty();
+        RuleFor(x => x.requestDTO.Description)
+            .NotEmpty()
+            .WithMessage("Description is required.")
+            .MaximumLength(1000)
+            .WithMessage("Description cannot exceed 1000 characters.");
     }
 }

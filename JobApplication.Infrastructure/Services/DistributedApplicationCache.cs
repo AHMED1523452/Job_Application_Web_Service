@@ -49,7 +49,6 @@ public sealed class DistributedApplicationCache : IApplicationCache
         var fullKey = FullKey(key);
         try
         {
-
             var expiration = TimeSpan.FromMinutes(_settings.DefaultExpirationMinutes);
             var json = JsonSerializer.Serialize(value, SerializerOptions);
             await _redis.GetDatabase().StringSetAsync(fullKey, json, expiration);

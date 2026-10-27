@@ -9,16 +9,16 @@ namespace JobApplication.Application.Services;
 public static class JobApplicationEventNotifier
 {
     public static async Task NotifyAsync(
-        IUnitOfWork unitOfWork,
-        IIdentityService identityService,
-        IEmailNotificationQueue emailQueue,
-        Guid recipientUserId,
-        Guid actorUserId,
-        NotificationType type,
-        string title,
-        string message,
-        string emailSubject,
-        CancellationToken cancellationToken)
+                                          IUnitOfWork unitOfWork,
+                                          IIdentityService identityService,
+                                          IEmailNotificationQueue emailQueue,
+                                          Guid recipientUserId,
+                                          Guid actorUserId,
+                                          NotificationType type,
+                                          string title,
+                                          string message,
+                                          string emailSubject,
+                                          CancellationToken cancellationToken)
     {
         var notification = new Notification
         {

@@ -1,4 +1,5 @@
-﻿using JobApplication.Application.Features.Skills.Commands;
+﻿using FluentValidation;
+using JobApplication.Application.Features.Skills.Commands;
 using JobApplication.Application.Interfaces;
 using JobApplication.Application.Patterns;
 using JobApplication.Domain.Entities;
@@ -23,18 +24,18 @@ namespace JobApplication.Application.Features.Skills.Handlers
         public async Task<GenericResult<string>> Handle(DeleteSkillCommand request, CancellationToken cancellationToken)
         {
             var userId = userService.GetCurrentUserIdOrNull();
-            if (userId.HasValue) return await Result.FailureAsync<string>("Authentication is required. ");
+            if (userId is null) return await Result.FailureAsync<string>("Authentication is required. ");
 
             IGenericRepository<Skill> instance = unitOfWork.Repository<Skill>();
             if (instance is null) throw new ArgumentNullException(nameof(instance));
 
             var existingSkill = await instance.GetByIdAsyncWithTracking(predicate: op => op.Id == request.Id &&
-                                                                                    op.IsActive &&
-                                                                                    !op.IsArchived &&
-                                                                                    !op.IsDeleted, cancellationToken);
+                                                                                     op.IsActive &&
+                                                                                     !op.IsArchived &&
+                                                                                     !op.IsDeleted, cancellationToken);
             if (existingSkill is null)
                 return await Result.FailureAsync<string>(message: "Skill not found");
-
+            
             existingSkill.IsActive = false;
             existingSkill.IsArchived = true;
             existingSkill.IsDeleted = true;
@@ -43,10 +44,17 @@ namespace JobApplication.Application.Features.Skills.Handlers
             existingSkill.DeletedByIp = userService.UserIP();
 
             await unitOfWork.SaveChangesAsync(cancellationToken); 
-            //. removing a 
             await cache.InvalidateAsync("Skills:", cancellationToken);
 
             return await Result.SuccessAsync<string>("Skill had been removed. ");
+        }
+    }
+
+    public class DeleteSkillCommandValidator : AbstractValidator<DeleteSkillCommand>
+    {
+        public DeleteSkillCommandValidator()
+        {
+            RuleFor(x => x.Id).NotEmpty();
         }
     }
 }

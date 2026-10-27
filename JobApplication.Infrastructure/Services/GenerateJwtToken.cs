@@ -91,7 +91,7 @@ namespace JobApplication.Infrastructure.Services
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddDays(7),
+                Expires = DateTime.UtcNow.AddDays(_jwtSettings.Value.RefreshTokenExpiryDays),
                 Issuer = _jwtSettings.Value.Issuer,
                 Audience = _jwtSettings.Value.Audience,
                 SigningCredentials = new SigningCredentials(

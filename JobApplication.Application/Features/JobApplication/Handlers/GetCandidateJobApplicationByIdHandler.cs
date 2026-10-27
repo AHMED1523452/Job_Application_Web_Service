@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.JobApplication.DTOs;
 using JobApplication.Application.Features.JobApplication.Queries;
 using JobApplication.Application.Interfaces;
@@ -67,5 +68,14 @@ public sealed class GetCandidateJobApplicationByIdHandler
         var response = await Result.SuccessAsync(application);
         await _cache.CreateAsync(cacheKey, response, cancellationToken);
         return response;
+    }
+}
+
+public class GetCandidateJobApplicationByIdValidator : AbstractValidator<GetCandidateJobApplicationByIdQuery>
+{
+    public GetCandidateJobApplicationByIdValidator()
+    {
+        RuleFor(query => query.CandidateProfileId).NotEmpty();
+        RuleFor(query => query.ApplicationId).NotEmpty();
     }
 }

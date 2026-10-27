@@ -5,6 +5,7 @@ using JobApplication.Application.Patterns;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ATS_Checker_Job_Application_Web_Service.Controllers;
 

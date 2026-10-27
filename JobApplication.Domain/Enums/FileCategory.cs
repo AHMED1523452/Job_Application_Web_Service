@@ -4,6 +4,7 @@ using System.Text;
 
 namespace JobApplication.Domain.Enums
 {
+    //. The Buckets name of the Supabase server
     public enum FileCategory
     {
         CandidateCV,

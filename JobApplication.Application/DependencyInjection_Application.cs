@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Text;
 using AutoMapper;
 using JobApplication.Application.Behaviors;
+using JobApplication.Application.Mapping;
 
 namespace JobApplication.Application
 {
@@ -25,7 +26,7 @@ namespace JobApplication.Application
             services.AddValidatorsFromAssembly(assembly);
 
             // AutoMapper — register profiles from this assembly
-            services.AddAutoMapper(assembly);
+            services.AddAutoMapper(cfg => { },typeof(CandidateProfile).Assembly);
 
             return services;
         }

@@ -3,7 +3,7 @@ namespace JobApplication.Domain.Entities
     //. you consider that the cancellation will like Patching or updating
     public class baseClass
     {
-        public bool IsActive { get; set; }
+        public bool IsActive { get; set; } = true;
         public bool IsArchived { get; set; } = false; 
         public bool IsDeleted { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

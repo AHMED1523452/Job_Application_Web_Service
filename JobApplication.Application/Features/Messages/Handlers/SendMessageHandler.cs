@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.Messages.Commands;
 using JobApplication.Application.Features.Messages.DTOs;
 using JobApplication.Application.Interfaces;
@@ -30,7 +31,6 @@ public sealed class SendMessageHandler : IRequestHandler<SendMessageCommand, Gen
                 cancellationToken))
             return await Result.FailureAsync<MessageResponseDTO>("Chat not found or access denied.");
 
-        // The upload flow must save MediaFile first; this verifies its returned ID is valid and usable.
         if (request.Request.MediaFileId.HasValue && !await _unitOfWork.Repository<MediaFile>().AnyAsync(
                 file => file.MediaFileID == request.Request.MediaFileId.Value && !file.IsDeleted && !file.IsArchived,
                 cancellationToken))
@@ -66,5 +66,25 @@ public sealed class SendMessageHandler : IRequestHandler<SendMessageCommand, Gen
             IsRead = message.IsRead,
             SentAt = message.SentAt
         }, "Message sent.");
+    }
+}
+
+public class SendMessageCommandValidator : AbstractValidator<SendMessageCommand>
+{
+    public SendMessageCommandValidator()
+    {
+        RuleFor(command => command.ChatId).NotEmpty();
+        RuleFor(command => command.Request)
+            .NotNull()
+            .DependentRules(() =>
+            {
+                RuleFor(command => command.Request.Content).MaximumLength(5000);
+                RuleFor(command => command.Request)
+                    .Must(request => !string.IsNullOrWhiteSpace(request.Content) || request.MediaFileId.HasValue)
+                    .WithMessage("Provide message content, an attachment, or both.");
+                RuleFor(command => command.Request.MediaFileId)
+                    .Must(id => !id.HasValue || id.Value != Guid.Empty)
+                    .WithMessage("MediaFileId must be a valid identifier.");
+            });
     }
 }

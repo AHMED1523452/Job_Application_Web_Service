@@ -1,7 +1,8 @@
+using FluentValidation;
 using JobApplication.Application.Features.Notifications.DTOs;
-using JobApplication.Application.Features.Notifications.Mapping;
 using JobApplication.Application.Features.Notifications.Queries;
 using JobApplication.Application.Interfaces;
+using JobApplication.Application.Mapping;
 using JobApplication.Application.Patterns;
 using JobApplication.Domain.Entities;
 using MediatR;
@@ -41,8 +42,7 @@ public sealed class GetMyNotificationsHandler
                 orderByDescending: true,
                 cancellationToken: cancellationToken);
 
-        //. without calling the Eager loading , this making us selecting specific columns using the Explicit mapping 
-       List<NotificationResponseDTO> items = entities.Select(NotificationMapper.ToResponse).ToList();
+        List<NotificationResponseDTO> items = entities.Select(NotificationMapper.ToResponse).ToList();
 
         var page = new PaginatedResult<NotificationResponseDTO>
         {
@@ -59,5 +59,14 @@ public sealed class GetMyNotificationsHandler
         };
 
         return await Result.SuccessAsync(page, ResultMessages.NotificationsLoaded);
+    }
+}
+
+public class GetMyNotificationsQueryValidator : AbstractValidator<GetMyNotificationsQuery>
+{
+    public GetMyNotificationsQueryValidator()
+    {
+        RuleFor(query => query.Page).GreaterThan(0);
+        RuleFor(query => query.PageSize).InclusiveBetween(1, 100);
     }
 }

@@ -1,3 +1,4 @@
+using FluentValidation;
 using System.Linq.Expressions;
 using JobApplication.Application.Features.JobApplication.DTOs;
 using JobApplication.Application.Features.JobApplication.Queries;
@@ -92,5 +93,20 @@ public sealed class GetUserJobApplicationsHandler
         var response = await Result.SuccessAsync(page, ResultMessages.PaginatedQueryCompleted);
         await _cache.CreateAsync(cacheKey, response, cancellationToken);
         return response;
+    }
+}
+
+public class GetUserJobApplicationsQueryValidator : AbstractValidator<GetUserJobApplicationsQuery>
+{
+    public GetUserJobApplicationsQueryValidator()
+    {
+        RuleFor(query => query.CandidateProfileId).NotEmpty();
+        RuleFor(query => query.Page).GreaterThan(0);
+        RuleFor(query => query.PageSize).InclusiveBetween(1, 100);
+        RuleFor(query => query.Search).MaximumLength(100);
+        RuleFor(query => query.OrderBy)
+            .Must(orderBy => string.IsNullOrWhiteSpace(orderBy)
+                || new[] { "AppliedAtUtc", "Id", "Status" }.Contains(orderBy, StringComparer.OrdinalIgnoreCase))
+            .WithMessage("OrderBy must be AppliedAtUtc, Id, or Status.");
     }
 }

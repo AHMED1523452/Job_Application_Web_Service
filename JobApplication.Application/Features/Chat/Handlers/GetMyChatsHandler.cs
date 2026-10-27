@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.Chat.DTOs;
 using JobApplication.Application.Features.Chat.Queries;
 using JobApplication.Application.Interfaces;
@@ -7,13 +8,14 @@ using ChatEntity = JobApplication.Domain.Entities.Chat;
 
 namespace JobApplication.Application.Features.Chat.Handlers;
 
-public sealed class GetMyChatsHandler : IRequestHandler<GetMyChatsQuery, GenericResult<PaginatedResult<ChatResponseDTO>>>
+public sealed class GetMyChatsHandler
+    : IRequestHandler<GetMyChatsQuery, GenericResult<PaginatedResult<ChatResponseDTO>>>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
-    public GetMyChatsHandler(IUnitOfWork unitOfWork, 
-                             ICurrentUserService currentUser) 
-    { 
+    public GetMyChatsHandler(IUnitOfWork unitOfWork,
+                             ICurrentUserService currentUser)
+    {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
     }
@@ -37,8 +39,8 @@ public sealed class GetMyChatsHandler : IRequestHandler<GetMyChatsQuery, Generic
                RecruiterUserId = chat.HrProfile.UserId,
                CreatedAt = chat.CreatedAt,
                LastMessageAt = chat.LastMessageAt
-           }, 
-           nameof(ChatEntity.LastMessageAt), //. sorting by 
+           },
+           nameof(ChatEntity.LastMessageAt),
            true,
            cancellationToken: cancellationToken);
 
@@ -55,5 +57,14 @@ public sealed class GetMyChatsHandler : IRequestHandler<GetMyChatsQuery, Generic
             }
         };
         return await Result.SuccessAsync(page, "Chats loaded.");
+    }
+}
+
+public class GetMyChatsQueryValidator : AbstractValidator<GetMyChatsQuery>
+{
+    public GetMyChatsQueryValidator()
+    {
+        RuleFor(query => query.Page).GreaterThan(0);
+        RuleFor(query => query.PageSize).InclusiveBetween(1, 100);
     }
 }

@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.JobApplication.Commands;
 using JobApplication.Application.Features.JobApplication.DTOs;
 using JobApplication.Application.Interfaces;
@@ -7,6 +8,7 @@ using JobApplication.Domain.Entities;
 using JobApplication.Domain.Enums;
 using MediatR;
 using JobEntity = JobApplication.Domain.Entities.Jobs;
+using HrProfileEntity = JobApplication.Domain.Entities.HrProfile;
 
 namespace JobApplication.Application.Features.JobApplication.Handlers;
 
@@ -77,7 +79,7 @@ public sealed class CancelJobApplicationHandler
             cancellationToken);
         var recruiter = job is null
             ? null
-            : await _unitOfWork.Repository<HrProfile>().GetByIdAsync(
+            : await _unitOfWork.Repository<HrProfileEntity>().GetByIdAsync(
                 profile => profile.Id == job.HrProfileId && !profile.IsDeleted && !profile.IsArchived,
                 cancellationToken);
         if (job is not null && recruiter is not null)
@@ -108,5 +110,14 @@ public sealed class CancelJobApplicationHandler
             Id = application.Id,
             JobId = application.JobId
         }, "Job application cancelled successfully.");
+    }
+}
+
+public class CancelJobApplicationValidator : AbstractValidator<CancelJobApplicationCommand>
+{
+    public CancelJobApplicationValidator()
+    {
+        RuleFor(command => command.candidateProfileId).NotEmpty();
+        RuleFor(command => command.appId).NotEmpty();
     }
 }

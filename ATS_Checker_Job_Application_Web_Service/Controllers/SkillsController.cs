@@ -5,6 +5,7 @@ using JobApplication.Application.Patterns;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ATS_Checker_Job_Application_Web_Service.Controllers
 {
@@ -37,14 +38,14 @@ namespace ATS_Checker_Job_Application_Web_Service.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [Authorize(Roles = "Admin,Recruiter")]
         public async Task<ActionResult<GenericResult<CreateSkillsResponseDTO>>> 
-                            UpdateAsync(Guid Id,[FromForm] CreateSkillsRequestDTO requestDTO, CancellationToken cancellationToken)
+                            UpdateAsync(Guid Id, CreateSkillsRequestDTO requestDTO, CancellationToken cancellationToken)
         {   
             var result = await mediator.Send(new UpdateSkillsCommand(Id,requestDTO), cancellationToken);
             if (!result.IsSuccess) return BadRequest(result);
 
             return Ok(result); 
         }
-        [HttpPatch("{Id}")]
+        [HttpPatch("{Id:guid}/remove")]
         [ProducesResponseType(typeof(GenericResult<string>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [Authorize(Roles = "Admin,Recruiter")]

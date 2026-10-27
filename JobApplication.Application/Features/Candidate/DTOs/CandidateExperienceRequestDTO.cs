@@ -1,6 +1,6 @@
 namespace JobApplication.Application.Features.Candidate.DTOs;
 
-public sealed class CandidateExperienceRequestDTO
+public sealed class UpdateCandidateExperienceRequestDTO
 {
     public Guid? Id { get; set; }
     public string JobTitle { get; set; } = string.Empty;

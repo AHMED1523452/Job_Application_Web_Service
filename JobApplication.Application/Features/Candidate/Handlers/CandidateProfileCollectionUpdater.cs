@@ -11,7 +11,7 @@ namespace JobApplication.Application.Features.Candidate.Handlers;
 /// </summary>
 internal static class CandidateProfileCollectionUpdater
 {
-    public static bool RequestReferencesOwnedChildren(CandidateProfile candidate, CandidateRequestDTO request)
+    public static bool RequestReferencesOwnedChildren(CandidateProfile candidate, UpdateCandidateRequestDTO request)
     {
         // Hash sets keep ownership checks constant-time for each submitted child ID.
         var experienceIds = candidate.experiences.Select(item => item.Id).ToHashSet();
@@ -27,7 +27,7 @@ internal static class CandidateProfileCollectionUpdater
         IUnitOfWork unitOfWork,
         IMapper mapper,
         CandidateProfile candidate,
-        CandidateRequestDTO request,
+        UpdateCandidateRequestDTO request,
         string actor,
         CancellationToken cancellationToken)
     {

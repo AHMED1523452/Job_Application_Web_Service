@@ -24,9 +24,10 @@ internal static class CandidateResponseBuilder
         IMapper mapper,
         CancellationToken cancellationToken)
     {
+        //. the 
         List<CandidateResponseDTO> responses = mapper.Map<List<CandidateResponseDTO>>(candidates);
 
-        //.
+        //. the distinct is not necessary here (i already adding a distinct skills in DB)
         var skillIds = responses.SelectMany(response => response.Skills)
             .Select(skill => skill.SkillId).Distinct().ToArray();
 

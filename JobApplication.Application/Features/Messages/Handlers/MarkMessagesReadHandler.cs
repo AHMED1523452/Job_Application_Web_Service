@@ -1,3 +1,4 @@
+using FluentValidation;
 using JobApplication.Application.Features.Messages.Commands;
 using JobApplication.Application.Interfaces;
 using JobApplication.Application.Patterns;
@@ -41,4 +42,9 @@ public sealed class MarkMessagesReadHandler : IRequestHandler<MarkMessagesReadCo
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return await Result.SuccessAsync(updatedCount, "Messages marked as read.");
     }
+}
+
+public class MarkMessagesReadCommandValidator : AbstractValidator<MarkMessagesReadCommand>
+{
+    public MarkMessagesReadCommandValidator() => RuleFor(command => command.ChatId).NotEmpty();
 }

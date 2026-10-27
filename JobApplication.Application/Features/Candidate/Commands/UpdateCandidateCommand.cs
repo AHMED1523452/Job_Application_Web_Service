@@ -5,5 +5,5 @@ using System;
 
 namespace JobApplication.Application.Features.Candidate.Commands
 {
-    public sealed record UpdateCandidateCommand(Guid Id, CandidateRequestDTO Request) : IRequest<GenericResult<CandidateResponseDTO>>;
+    public sealed record UpdateCandidateCommand(Guid Id, UpdateCandidateRequestDTO Request) : IRequest<GenericResult<CandidateResponseDTO>>;
 }
